@@ -1,0 +1,81 @@
+﻿<!ENTITY fileMenu.label "ملف">
+<!ENTITY fileMenu.accesskey "م">
+<!ENTITY closeCmd.label                 "إغلاق">
+<!ENTITY closeCmd.key                   "W">
+<!ENTITY closeCmd.accesskey             "ق">
+<!ENTITY quitApplicationCmdWin.label       "خروج">
+<!ENTITY quitApplicationCmdWin.accesskey   "خ">
+<!ENTITY quitApplicationCmd.label       "إنهاء">
+<!ENTITY quitApplicationCmd.accesskey   "ن">
+<!ENTITY quitApplicationCmdMac.label    "إنهاء زوتيرو">
+<!ENTITY quitApplicationCmdMac.key      "Q">
+
+<!ENTITY editMenu.label         "تحرير">
+<!ENTITY editMenu.accesskey       "ح">
+<!ENTITY undoCmd.label            "تراجع">
+<!ENTITY undoCmd.key            "Z">
+<!ENTITY undoCmd.accesskey          "ر">
+<!ENTITY redoCmd.label            "إعادة">
+<!ENTITY redoCmd.key            "Y">
+<!ENTITY redoCmd.accesskey          "ع">
+<!ENTITY cutCmd.label           "قص">
+<!ENTITY cutCmd.key             "X">
+<!ENTITY cutCmd.accesskey         "ص">
+<!ENTITY copyCmd.label            "نسخ">
+<!ENTITY copyCmd.key            "C">
+<!ENTITY copyCmd.accesskey          "س">
+<!ENTITY pasteCmd.label           "لصق">
+<!ENTITY pasteCmd.key           "V">
+<!ENTITY pasteCmd.accesskey         "ل">
+<!ENTITY deleteCmd.label          "حذف">
+<!ENTITY deleteCmd.key            "D">
+<!ENTITY deleteCmd.accesskey        "ذ">
+<!ENTITY selectAllCmd.label         "تحديد الكل">
+<!ENTITY selectAllCmd.key         "A">
+<!ENTITY selectAllCmd.accesskey       "ح">
+<!ENTITY preferencesCmd.label       "خيارات…">
+<!ENTITY preferencesCmd.accesskey     "ي">
+<!ENTITY preferencesCmdUnix.label       "تفضيلات">
+<!ENTITY preferencesCmdUnix.accesskey     "ف">
+
+<!ENTITY findOnCmd.label     "البحث في هذه الصفحة…">
+<!ENTITY findOnCmd.accesskey "ب">
+<!ENTITY findOnCmd.commandkey "f">
+<!ENTITY findAgainCmd.label  "البحث التالي">
+<!ENTITY findAgainCmd.accesskey "ث">
+<!ENTITY findAgainCmd.commandkey "g">
+<!ENTITY findAgainCmd.commandkey2 "VK_F3">
+
+<!ENTITY bidiSwitchPageDirectionItem.label        "تغيير اتجاه الصفحة">
+<!ENTITY bidiSwitchPageDirectionItem.accesskey    "ه">
+<!ENTITY bidiSwitchTextDirectionItem.label        "تغيير اتجاه النص">
+<!ENTITY bidiSwitchTextDirectionItem.accesskey    "ج">
+<!ENTITY bidiSwitchTextDirectionItem.commandkey   "X">
+
+<!-- LOCALIZATION NOTE :
+fullZoomEnlargeCmd.commandkey3, fullZoomReduceCmd.commandkey2 and
+fullZoomResetCmd.commandkey2 are alternative acceleration keys for zoom.
+If shift key is needed with your locale popular keyboard for them,
+you can use these alternative items. Otherwise, their values should be empty.  -->
+
+<!ENTITY fullZoomEnlargeCmd.label       "تكبير">
+<!ENTITY fullZoomEnlargeCmd.accesskey   "ك">
+<!ENTITY fullZoomEnlargeCmd.commandkey  "+">
+<!ENTITY fullZoomEnlargeCmd.commandkey2 "=">
+<!-- + is above this key on many keyboards -->
+<!ENTITY fullZoomEnlargeCmd.commandkey3 "">
+
+<!ENTITY fullZoomReduceCmd.label        "تصغير">
+<!ENTITY fullZoomReduceCmd.accesskey    "غ">
+<!ENTITY fullZoomReduceCmd.commandkey   "-">
+<!ENTITY fullZoomReduceCmd.commandkey2  "">
+
+<!ENTITY fullZoomResetCmd.label         "اعادة تعيين التكبير">
+<!ENTITY fullZoomResetCmd.accesskey     "د">
+<!ENTITY fullZoomResetCmd.commandkey    "0">
+<!ENTITY fullZoomResetCmd.commandkey2   "">
+
+<!ENTITY fullZoomToggleCmd.label        "تكبير النص فقط">
+<!ENTITY fullZoomToggleCmd.accesskey    "ط">
+<!ENTITY fullZoom.label                 "تكبير/تصغير">
+<!ENTITY fullZoom.accesskey             "/">
