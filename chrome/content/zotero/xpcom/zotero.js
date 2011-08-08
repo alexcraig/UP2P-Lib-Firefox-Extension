@@ -185,10 +185,6 @@ if(appInfo.platformVersion[0] >= 2) {
 	// whether we are waiting for another Zotero process to initialize so we can use connector
 	var _waitingForInitComplete = false;
 	
-	// whether we should broadcast an initComplete message when initialization finishes (we should
-	// do this if we forced another Zotero process to release its lock)
-	var _broadcastInitComplete = false;
-	
 	/**
 	 * Maintains nsITimers to be used when Zotero.wait() completes (to reduce performance penalty
 	 * of initializing new objects)
@@ -438,10 +434,13 @@ if(appInfo.platformVersion[0] >= 2) {
 				// Wait for initComplete message if we switched to connector because standalone was
 				// started. This shouldn't loop indefinitely, but even if it does, it won't hang
 				// anything (since it will stop looping on shutdown).
+				Zotero.IPC.broadcast("checkInitComplete");
+				Zotero.debug("Waiting for initComplete message");
 				_waitingForInitComplete = true;
 				while(_waitingForInitComplete && !Zotero.closing) {
 					Zotero.mainThread.processNextEvent(true);
 				}
+				Zotero.debug("initComplete message received");
 				if(Zotero.closing) return false;
 			}
 			
@@ -460,9 +459,6 @@ if(appInfo.platformVersion[0] >= 2) {
 			Zotero.debug('Triggering "zotero-reloaded" event');
 			observerService.notifyObservers(Zotero, "zotero-reloaded", null);
 		}
-		
-		// Broadcast initComplete message if desired
-		if(_broadcastInitComplete) Zotero.IPC.broadcast("initComplete");
 		
 		return true;
 	}
@@ -695,9 +691,6 @@ if(appInfo.platformVersion[0] >= 2) {
 							Zotero.mainThread.processNextEvent(true);
 						}
 						if(Zotero.closing) return false;
-						
-						// We will want to broadcast when initialization completes
-						_broadcastInitComplete = true;
 						
 						// Run a second init with haveReleasedLock = true, so that
 						// if we still can't acquire a DB lock, we will give up

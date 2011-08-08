@@ -800,6 +800,13 @@ To add a new preference:
 			</hbox>
 		</groupbox>
 		
+		<groupbox>
+			<caption label="&zotero.preferences.miscellaneous;"/>
+			<hbox align="center">
+				<button id="openAboutConfig" label="&zotero.preferences.openAboutConfig;" oncommand="openInViewer('about:config', '')"/>
+			</hbox>
+		</groupbox>
+		
 		<separator/>
 	</prefpane>
 	
