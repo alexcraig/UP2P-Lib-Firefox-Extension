@@ -71,7 +71,6 @@ var exportFieldMap = {
 	edition:"edition",
 	type:"type",
 	series:"series",
-	pages:"pages",
 	title:"title",
 	volume:"volume",
 	copyright:"rights",
@@ -91,7 +90,6 @@ var exportFieldMap = {
 var inputFieldMap = {
 	title:"title",
 	volume:"volume",
-	pages:"pages",
 	place:"address",
 	url:"howpublished",
 	type:"type",
@@ -137,7 +135,6 @@ var bibtex2zoteroTypeMap = {
 var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-			  
 // -------------------------------------------------------------------
 // ---------------- Import Translator Implementation  ---------------- 
 // -------------------------------------------------------------------
@@ -200,17 +197,6 @@ function doImport() {
 		var isValid = false;
 		var newItem = new Zotero.Item();
 		
-		// Get all the fields specified in the inputFieldMap (values for these fields require no
-		// special processing, and can just be copied unmodified to the Zotero item)
-		for each(var xmlTag in entryRoot.*.*) {
-			for(var field in inputFieldMap) {
-				if(xmlTag.name() == inputFieldMap[field]) {
-					newItem[field] = xmlDecode(xmlTag);
-					break; // Each XML tag should only correspond to 1 field
-				}
-			}
-		}
-		
 		// Get the item type of the item
 		var bibtexmlItemType;
 		for each(var entryType in entryRoot.*) {
@@ -221,6 +207,17 @@ function doImport() {
 				bibtexmlItemType = entryType.name();
 				newItem.itemType = bibtex2zoteroTypeMap[bibtexmlItemType];
 				isValid = true;
+			}
+		}
+		
+		// Get all the fields specified in the inputFieldMap (values for these fields require no
+		// special processing, and can just be copied unmodified to the Zotero item)
+		for each(var xmlTag in entryRoot.*.*) {
+			for(var field in inputFieldMap) {
+				if(xmlTag.name() == inputFieldMap[field]) {
+					newItem[field] = xmlDecode(xmlTag);
+					break; // Each XML tag should only correspond to 1 field
+				}
 			}
 		}
 		
@@ -260,7 +257,7 @@ function doImport() {
 		// Get the publication date (date requires month / year processing)
 		var dateString = "";
 		for each(var month in entryRoot.*.month) {
-			dateString += month + ", ";
+			dateString += month + " ";
 		}
 		for each(var year in entryRoot.*.year) {
 			dateString += year;
@@ -278,6 +275,11 @@ function doImport() {
 			} else {
 				newItem.seriesNumber = xmlDecode(number);
 			}
+		}
+		
+		// Read the "pages" field, converting TeX style double dashes back to a single dash
+		for each(var pages in entryRoot.*.pages) {
+			newItem.pages = xmlDecode(pages.replace("--", "–"));
 		}
 		
 		if(isValid) {
@@ -469,7 +471,7 @@ function buildCiteKey (item,citekeys) {
  * are also optionally exported.
  */
 function doExport() {
-	Zotero.write("\n");
+	Zotero.write('<?xml version="1.0" encoding="UTF-8" ?>');
 	
 	var citekeys = new Object();
 	var item;
@@ -543,6 +545,10 @@ function doExport() {
 					storeField("author", creatorString, itemFieldsMap, mapKeys);
 				}
 			}
+		}
+		
+		if(item.pages) {
+			storeField("pages", item.pages.replace("–", "-").replace("-","--"), itemFieldsMap, mapKeys);
 		}
 		
 		if(item.date) {
