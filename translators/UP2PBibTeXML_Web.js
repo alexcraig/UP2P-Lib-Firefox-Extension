@@ -105,13 +105,21 @@ function doWeb(doc, url) {
 	var entryRoot = new XML(doc.getElementById("zotero-raw-xml").innerHTML);
 
 	var newItem = new Zotero.Item();
-	
 	// Get the item type of the item
 	var bibtexmlItemType;
 	for each(var entryType in entryRoot.*) {
 		if(entryType.name() == "file") {
-			// Attachment field for the entry, ignore for now
-			continue;
+			// Attachment field for the entry, try to download the attachment
+			var communityId = doc.getElementById("zotero-comm-id").innerHTML;
+			var idString = "community/" + communityId
+					+ "/" + url.substr(url.indexOf("up2p:resource=") + 14, 32) + "/";
+			var pdfUrl = url.substring(0, url.indexOf("view.jsp")) + idString
+					+ entryType.text().substr(idString.length);
+			
+			newItem.attachments.push({
+				title: entryType.text().substr(idString.length),
+				mimeType:"application/pdf",
+				url:pdfUrl});
 		} else {
 			bibtexmlItemType = entryType.name();
 			newItem.itemType = bibtex2zoteroTypeMap[bibtexmlItemType];
