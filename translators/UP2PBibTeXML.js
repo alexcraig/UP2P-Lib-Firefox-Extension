@@ -62,12 +62,16 @@ var bibtexmlFieldOrder = {
 //%t = first word of title
 var citeKeyFormat = "%a_%t_%y";
 
-var fieldMap = {
+/** 
+ * Map used for export mapping when values require no modification (other than XML escaping)
+ */
+var exportFieldMap = {
 	address:"place",
 	chapter:"chapter",
 	edition:"edition",
 	type:"type",
 	series:"series",
+	pages:"pages",
 	title:"title",
 	volume:"volume",
 	copyright:"rights",
@@ -81,12 +85,19 @@ var fieldMap = {
 	"abstract":"abstractNote"
 };
 
+/** 
+ * Map used for import mapping when values require no modification (other than XML decoding) 
+ */
 var inputFieldMap = {
-	booktitle :"publicationTitle",
-	school:"publisher",
-	institution:"publisher",
-	publisher:"publisher",
-	issue:"issue"
+	title:"title",
+	volume:"volume",
+	pages:"pages",
+	place:"address",
+	url:"howpublished",
+	type:"type",
+	series:"series",
+	chapter:"chapter",
+	edition:"edition"
 };
 
 var zotero2bibtexTypeMap = {
@@ -124,10 +135,18 @@ var bibtex2zoteroTypeMap = {
 };
 
 var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-              "Jul", "Aug", "SSep", "Oct", "Nov", "Dec"];
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+			  
+// -------------------------------------------------------------------
 // ---------------- Import Translator Implementation  ---------------- 
+// -------------------------------------------------------------------
 
+/** 
+ * Checks that the format of the specified XML file matches BibTeXML / U-P2P batch format.
+ * This does not perform full schema validation, but rather only checks that all second level
+ * children of the root element are called "entry".
+ */
 function detectImport() {
 	// For now, check that all first level children of the processed XML
 	// have the tag name "entry" (could also check that second level children are valid
@@ -152,7 +171,6 @@ function detectImport() {
 		}
 	}
 
-	Zotero.debug("detectImport returning true");
 	return true;
 }
 
@@ -169,21 +187,31 @@ function xmlDecode(text) {
 	return newText;
 }
 
+/**
+ * Reads a list of citation data in BibTeXML format it and converts them into Zotero items.
+ * The items are saved as long as a valid itemType is read.
+ */
 function doImport() {
 	var xml = Zotero.getXML();
 	var childList = xml.*;
 	
 	var i = 0;
 	for each (var entryRoot in childList) {
+		var isValid = false;
 		var newItem = new Zotero.Item();
 		
-		// Get the title of the item
-		newItem.title = xmlDecode(entryRoot.*.title);
-		Zotero.debug("NewItem.title = " + newItem.title);
+		// Get all the fields specified in the inputFieldMap (values for these fields require no
+		// special processing, and can just be copied unmodified to the Zotero item)
+		for each(var xmlTag in entryRoot.*.*) {
+			for(var field in inputFieldMap) {
+				if(xmlTag.name() == inputFieldMap[field]) {
+					newItem[field] = xmlDecode(xmlTag);
+					break; // Each XML tag should only correspond to 1 field
+				}
+			}
+		}
 		
 		// Get the item type of the item
-		// TODO: Don't commit this item if a valid type could not be found
-		var itemType;
 		var bibtexmlItemType;
 		for each(var entryType in entryRoot.*) {
 			if(entryType.name() == "file") {
@@ -191,12 +219,13 @@ function doImport() {
 				continue;
 			} else {
 				bibtexmlItemType = entryType.name();
+				newItem.itemType = bibtex2zoteroTypeMap[bibtexmlItemType];
+				isValid = true;
 			}
 		}
-		newItem.itemType = bibtex2zoteroTypeMap[bibtexmlItemType];
-		Zotero.debug("NewItem.itemType = " + newItem.itemType);
 		
-		// Get the author / editors of the piece
+		// Get the author / editors of the piece (requires special processing to generate
+		// creator objects)
 		for each(var author in entryRoot.*.author) {
 			var creator = buildCreatorObj(xmlDecode(author), "author");
 			newItem.creators.push(creator);
@@ -207,6 +236,7 @@ function doImport() {
 		}
 		
 		// If a journal or booktitle is specified, store it as the publicationTitle
+		// (Multiple fields in BibTeXML map to publicationTitle in Zotero)
 		for each(var pubTitle in entryRoot.*.booktitle) {
 			newItem.publicationTitle = xmlDecode(pubTitle);
 			Zotero.debug("NewItem.publicationTitle (booktitle) = " + newItem.publicationTitle);
@@ -216,7 +246,7 @@ function doImport() {
 			Zotero.debug("NewItem.publicationTitle (journal) = " + newItem.publicationTitle);
 		}
 		
-		// Get the publisher
+		// Get the publisher (multiple fields in BibTeXML map to publisher in Zotero)
 		for each(var publisher in entryRoot.*.publisher) {
 			newItem.publisher = xmlDecode(publisher);
 		}
@@ -227,7 +257,7 @@ function doImport() {
 			newItem.publisher = xmlDecode(publisher);
 		}
 		
-		// Get the publication date
+		// Get the publication date (date requires month / year processing)
 		var dateString = "";
 		for each(var month in entryRoot.*.month) {
 			dateString += month + ", ";
@@ -236,57 +266,26 @@ function doImport() {
 			dateString += year;
 		}
 		if(dateString != "") {
-			newItem.date = dateString;
+			newItem.date = xmlDecode(dateString);
 		}
 		
 		// Read the "number" field based on the type of element
 		for each(var number in entryRoot.*.number) {
 			if(bibtexmlItemType == "techreport") {
-				newItem.reportNumber = number;
+				newItem.reportNumber = xmlDecode(number);
 			} else if (bibtexmlItemType == "article") {
-				newItem.issue = number;
+				newItem.issue = xmlDecode(number);
 			} else {
-				newItem.seriesNumber = number;
+				newItem.seriesNumber = xmlDecode(number);
 			}
 		}
 		
-		// Read the volume field
-		for each(var volume in entryRoot.*.volume) {
-			newItem.volume = volume;
+		if(isValid) {
+			newItem.complete();
+		} else {
+			Zotero.debug("Invalid item found in BibTeXML import, skipping item: " + i);
 		}
 		
-		// Read the pages field
-		for each(var pages in entryRoot.*.volume) {
-			newItem.pages = pages;
-		}
-		
-		// Read the type field
-		for each(var type in entryRoot.*.type) {
-			newItem.pages = type;
-		}
-		
-		// Read the series field
-		for each(var series in entryRoot.*.series) {
-			newItem.series = series;
-		}
-		
-		// Read the chapter field
-		for each(var chapter in entryRoot.*.chapter) {
-			newItem.chapter = chapter;
-		}
-		
-		// Read the edition field
-		for each(var edition in entryRoot.*.edition) {
-			newItem.edition = edition;
-		}
-		
-		// Get the howpublished field (this should only ever contain URL's if exported
-		// from Zotero)
-		for each(var url in entryRoot.*.howpublished) {
-			newItem.url = url;
-		}
-		
-		newItem.complete();
 		Zotero.setProgress(i++ / childList.length() * 100);
 	}
 }
@@ -313,7 +312,10 @@ function buildCreatorObj(creatorString, creatorType) {
 	return creator;
 }
 
+
+// -------------------------------------------------------------------
 // ---------------- Export Translator Implementation  ---------------- 
+// -------------------------------------------------------------------
 
 /**
  * Replaces any XML restricted characters in the passed string with their
@@ -328,14 +330,15 @@ function xmlEscape(text) {
 	return newText;
 }
 
+/**
+ * Stores the specified field value into the provided fieldMap with the provided field name.
+ * A new entry is also created in the mapKeys list, which stores the listing of all field
+ * names which have been added to the fieldMap.
+ */
 function storeField(field, value, fieldMap, mapKeys) {
 	if(!value && typeof value != "number") return;
 	value = value + ""; // Convert integers to strings
 	value = xmlEscape(value); // Replace XML characters with escape sequences
-
-	if (Zotero.getOption("exportCharset") != "UTF-8") {
-		value = value.replace(/[\u0080-\uFFFF]/g, mapAccent);
-	}
 	
 	if(fieldMap[field] == undefined) {
 		fieldMap[field] = [value];
@@ -345,13 +348,10 @@ function storeField(field, value, fieldMap, mapKeys) {
 	}
 }
 
-function mapAccent(character) {
-	return (mappingTable[character] ? mappingTable[character] : "?");
-}
-
-// a little substitution function for BibTeX keys, where we don't want LaTeX 
-// escaping, but we do want to preserve the base characters
-
+/** 
+ * A little substitution function for BibTeX keys, where we don't want LaTeX 
+ * escaping, but we do want to preserve the base characters
+ */
 function tidyAccents(s) {
 	var r = s.toLowerCase();
 	r = r.replace(new RegExp("[ä]", 'g'),"ae");
@@ -371,14 +371,22 @@ function tidyAccents(s) {
 };
 
 var numberRe = /^[0-9]+/;
-// Below is a list of words that should not appear as part of the citation key
-// in includes the indefinite articles of English, German, French and Spanish, as well as a small set of English prepositions whose 
-// force is more grammatical than lexical, i.e. which are likely to strike many as 'insignificant'.
-// The assumption is that most who want a title word in their key would prefer the first word of significance.
+
+/** 
+ * Below is a list of words that should not appear as part of the citation key
+ * in includes the indefinite articles of English, German, French and Spanish, as well as a small 
+ * set of English prepositions whose force is more grammatical than lexical, i.e. which are likely 
+ * to strike many as 'insignificant'.
+ * The assumption is that most who want a title word in their key would prefer the first word of
+ * significance.
+ */
 var citeKeyTitleBannedRe = /\b(a|an|the|some|from|on|in|to|of|do|with|der|die|das|ein|eine|einer|eines|einem|einen|un|une|la|le|l\'|el|las|los|al|uno|una|unos|unas|de|des|del|d\')(\s+|\b)/g;
 var citeKeyConversionsRe = /%([a-zA-Z])/;
 var citeKeyCleanRe = /[^a-z0-9\*\+\-\.\[\]\_]+/g;
 
+/**
+ * Helper functions for generation of citation keys 
+ */
 var citeKeyConversions = {
     "a":function (flags, item) {
         if(item.creators && item.creators[0] && item.creators[0].lastName) {
@@ -403,7 +411,10 @@ var citeKeyConversions = {
     }
 }
 
-
+/**
+ * Generates and returns a citation key for the passed item, ensuring that it is unique
+ * among the passed list of citation keys.
+ */
 function buildCiteKey (item,citekeys) {
     var basekey = "";
     var counter = 0;
@@ -453,6 +464,10 @@ function buildCiteKey (item,citekeys) {
     return citekey;
 }
 
+/**
+ * Generates a U-P2P / BibTeXML batch XML file from the exported items. PDF attachments
+ * are also optionally exported.
+ */
 function doExport() {
 	Zotero.write("\n");
 	
@@ -460,15 +475,15 @@ function doExport() {
 	var item;
 	Zotero.write("<batch>");
 	while(item = Zotero.nextItem()) {
-		// determine type
+		// Determine type
 		var type = zotero2bibtexTypeMap[item.itemType];
 		if (typeof(type) == "function") { type = type(item); }
 		if(!type) type = "misc";
 		
-		// create a unique citation key
+		// Create a unique citation key
 		var citekey = buildCiteKey(item, citekeys);
 		
-		// write citation key
+		// Write citation key
 		Zotero.write("\n<entry id=\"" + citekey + "\">\n<" + type + ">");
 		
 		// Next, build a map of all stored fields for the item. The map is 
@@ -479,17 +494,21 @@ function doExport() {
 		var itemFieldsMap = {};
 		var mapKeys = [];
 		
-		for(var field in fieldMap) {
-			if(item[fieldMap[field]]) {
-				storeField(field, item[fieldMap[field]], itemFieldsMap, mapKeys);
+		// Store all fields in the exportFieldMap (these fields require no extra processing beyond
+		// XML escaping their values)
+		for(var field in exportFieldMap) {
+			if(item[exportFieldMap[field]]) {
+				storeField(field, item[exportFieldMap[field]], itemFieldsMap, mapKeys);
 			}
 		}
 
+		// Write out the number field (the reportNumber, issue, and seriesNumber fields should be
+		// mutually exclusive on the original item
 		if(item.reportNumber || item.issue || item.seriesNumber) {
 			storeField("number", item.reportNumber || item.issue || item.seriesNumber
 				, itemFieldsMap, mapKeys);
 		}
-
+		
 		if(item.publicationTitle) {
 			if(item.itemType == "bookSection" || item.itemType == "conferencePaper") {
 				storeField("booktitle", item.publicationTitle, itemFieldsMap, mapKeys);
@@ -498,6 +517,8 @@ function doExport() {
 			}
 		}
 		
+		// Fill out the "school", "institution", or "publisher" field based on the type of the
+		// publication
 		if(item.publisher) {
 			if(item.itemType == "thesis") {
 				storeField("school", item.publisher, itemFieldsMap, mapKeys);
@@ -508,6 +529,7 @@ function doExport() {
 			}
 		}
 		
+		// Write out item creators in "lastName, firstName" format
 		if(item.creators && item.creators.length) {
 			for each(var creator in item.creators) {
 				var creatorString = creator.lastName;
@@ -525,7 +547,7 @@ function doExport() {
 		
 		if(item.date) {
 			var date = Zotero.Utilities.strToDate(item.date);
-			// need to use non-localized abbreviation
+			// Need to use non-localized abbreviation
 			if(typeof date.month == "number") {
 				storeField("month", months[date.month], itemFieldsMap, mapKeys);
 			}
@@ -538,37 +560,22 @@ function doExport() {
 			storeField("note", item.extra, itemFieldsMap, mapKeys);
 		}
 		
-		if(item.tags && item.tags.length) {
-			var tagString = "";
-			for each(var tag in item.tags) {
-				tagString += ", "+tag.tag;
-			}
-			storeField("keywords", tagString.substr(2), itemFieldsMap, mapKeys);
-		}
-		
-		if(item.pages) {
-			storeField("pages", item.pages.replace("–", "-").replace("-","--"), itemFieldsMap, mapKeys);
-		}
-		
-		// Commented out, because we don't want a books number of pages in the 
-		// BibTeX "pages" field for books.
-		//if(item.numPages) {
-		//	storeField("pages", item.numPages);
-		//}
-		
+		// Write out the URL to the "howpublished" field for web pages
 		if(item.itemType == "webpage") {
 			storeField("howpublished", item.url, itemFieldsMap, mapKeys);
 		}
 		
-		// Disable the export of notes for now
+		// Disable the export of notes for now (need to generate a new XML file, probably not
+		// possible with standard Zotero sandbox)
 		/*
 		if (item.notes && Zotero.getOption("exportNotes")) {
 			for each (var note in item.notes) {
 				storeField("annote", Zotero.Utilities.unescapeHTML(note["note"]));
 			}
 		}
-		*/		
+		*/
 		
+		// Export PDF file attachments if exportFileData is set
 		if(Zotero.getOption("exportFileData")) {
 			if(item.attachments) {
 				for each(var attachment in item.attachments) {
@@ -577,6 +584,8 @@ function doExport() {
 						var renameCounter = 2;
 						var saveSuccess = false;
 
+						// Save the attachment, renaming if necessary if a file name conflict
+						// occurs
 						while(!saveSuccess) {
 							try {
 								attachment.saveItem(filename);
@@ -606,8 +615,9 @@ function doExport() {
 				Zotero.write("\n<" + bibtexmlFieldOrder[type][fieldIndex] + ">" + itemFieldsMap[bibtexmlFieldOrder[type][fieldIndex]][value] + "</" + bibtexmlFieldOrder[type][fieldIndex] + ">");
 			}
 		}
-		
 		Zotero.write("\n</" + type + ">");
+		
+		// Write out the path to the file attachment (if one exists)
 		if(!(itemFieldsMap["file"] == undefined)) {
 			for(value in itemFieldsMap["file"]) {
 				Zotero.write("\n<file>" + itemFieldsMap["file"][value] + "</file>");
