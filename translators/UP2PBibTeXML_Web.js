@@ -3,7 +3,7 @@
 	"translatorType":4,
 	"label":"U-P2P BibTeXML (Web Scraper)",
 	"creator":"Alexander Craig",
-	"target":"view.jsp\\?.*up2p:resource=.{32}",
+	"target":"view.jsp\\?.*(up2p:resource=.{32}|up2p:community=.{32})",
 	"minVersion":"3.0",
 	"maxVersion":"",
 	"priority":100,
@@ -43,23 +43,30 @@ var bibtex2zoteroTypeMap = {
 // ---------------- Web Scraper Implementation -----------------------
 // -------------------------------------------------------------------
 function detectWeb(doc, url) {
-	if (url.indexOf("view.jsp") == -1 || url.indexOf("up2p:resource") == -1) {
+	// Check to see if the active community is UP2P-Lib
+	var communityXml = doc.getElementById("zotero-comm-id");
+	if(communityXml == null) {
 		return false;
 	}
 	
-	// URL matches U-P2P format, now get the item type by reading the XML
-	var rawData = doc.getElementById("zotero-raw-xml");
-	if(rawData == null) {
-		return false;
+	// First check for multiple selections (community view)
+	var rawData = doc.getElementById("zotero-raw-multi-xml");
+	if(rawData != null) {
+		// Fetch the titles and resource ID's of each publication
+		return "multiple";
 	}
 	
-	var xmlDoc = new XML(rawData.innerHTML);
-	var childList = xmlDoc.*;
-	for each (var child in childList) {
-		if(child.name() == "file") {
-			// File attachment field, ignore it
-		} else {
-			return child.name();
+	// URL matches U-P2P single resourceformat, now get the item type by reading the XML
+	rawData = doc.getElementById("zotero-raw-single-xml");
+	if(rawData != null) {
+		var xmlDoc = new XML(rawData.innerHTML);
+		var childList = xmlDoc.*;
+		for each (var child in childList) {
+			if(child.name() == "file") {
+				// File attachment field, ignore it
+			} else {
+				return child.name();
+			}
 		}
 	}
 	
@@ -102,22 +109,65 @@ function buildCreatorObj(creatorString, creatorType) {
 }
 
 function doWeb(doc, url) {
-	var entryRoot = new XML(doc.getElementById("zotero-raw-xml").innerHTML);
+	var communityId = doc.getElementById("zotero-comm-id").innerHTML;
+	
+	if(detectWeb(doc, url) == "multiple") {
+		// Multiple publication viewing page import
+		var rawData = doc.getElementById("zotero-raw-multi-xml");
+		
+		var items = new Object();
+		var xmlList = new Object();
+		
+		var xmlDoc = new XML(rawData.innerHTML);
+		var childList = xmlDoc.*;
+		for each (var child in childList) {
+			var childTitle = child.@title.toString();
+			if(child..file.length() > 0) {
+				childTitle = "[PDF] " + childTitle;
+			}
+			items[child.@id.toString()] = childTitle;
+			xmlList[child.@id.toString()] = child.*;
+		}
+		
+		Zotero.selectItems(items, function(items) {
+			if(!items) return true;
+			for (var i in items) {
+				importXMLNode(xmlList[i], communityId,
+					i, url);
+			}
+		});
+	} else {
+		// Single publication viewing page import
+		var entryRoot = new XML(doc.getElementById("zotero-raw-single-xml").innerHTML);
+		importXMLNode(entryRoot, communityId,
+				url.substr(url.indexOf("up2p:resource=") + 14, 32),
+				url);
+	}
+}
 
+function importXMLNode(entryRoot, communityId, resourceId, url) {
 	var newItem = new Zotero.Item();
+	
 	// Get the item type of the item
 	var bibtexmlItemType;
 	for each(var entryType in entryRoot.*) {
 		if(entryType.name() == "file") {
 			// Attachment field for the entry, try to download the attachment
-			var communityId = doc.getElementById("zotero-comm-id").innerHTML;
 			var idString = "community/" + communityId
-					+ "/" + url.substr(url.indexOf("up2p:resource=") + 14, 32) + "/";
+					+ "/" + resourceId + "/";
+			var pdfTitle = "";
+
+			if(entryType.text().indexOf("file:") == 0) {
+				pdfTitle = entryType.toString().substr(5);
+			} else {
+				pdfTitle = entryType.toString().substr(idString.length);
+			}
+			
 			var pdfUrl = url.substring(0, url.indexOf("view.jsp")) + idString
-					+ entryType.text().substr(idString.length);
+					+ pdfTitle;
 			
 			newItem.attachments.push({
-				title: entryType.text().substr(idString.length),
+				title: pdfTitle,
 				mimeType:"application/pdf",
 				url:pdfUrl});
 		} else {
@@ -153,11 +203,9 @@ function doWeb(doc, url) {
 	// (Multiple fields in BibTeXML map to publicationTitle in Zotero)
 	for each(var pubTitle in entryRoot.*.booktitle) {
 		newItem.publicationTitle = xmlDecode(pubTitle);
-		Zotero.debug("NewItem.publicationTitle (booktitle) = " + newItem.publicationTitle);
 	}
 	for each(var pubTitle in entryRoot.*.journal) {
 		newItem.publicationTitle = xmlDecode(pubTitle);
-		Zotero.debug("NewItem.publicationTitle (journal) = " + newItem.publicationTitle);
 	}
 	
 	// Get the publisher (multiple fields in BibTeXML map to publisher in Zotero)

@@ -151,19 +151,16 @@ function detectImport() {
 	var xml = Zotero.getXML();
 	var name = xml.name();
 	if (!name) {
-		Zotero.debug("No root name.");
 		return false;
 	}
 	
 	var childList = xml.*;
 	if(childList.length() == 0) {
-		Zotero.debug("Got empty child list.");
 		return false;
 	}
 	
 	for each (var child in childList) {
 		if(child.name() != "entry") {
-			Zotero.debug("Got unexpected child name: " + child.name());
 			return false;
 		}
 	}
@@ -236,11 +233,9 @@ function doImport() {
 		// (Multiple fields in BibTeXML map to publicationTitle in Zotero)
 		for each(var pubTitle in entryRoot.*.booktitle) {
 			newItem.publicationTitle = xmlDecode(pubTitle);
-			Zotero.debug("NewItem.publicationTitle (booktitle) = " + newItem.publicationTitle);
 		}
 		for each(var pubTitle in entryRoot.*.journal) {
 			newItem.publicationTitle = xmlDecode(pubTitle);
-			Zotero.debug("NewItem.publicationTitle (journal) = " + newItem.publicationTitle);
 		}
 		
 		// Get the publisher (multiple fields in BibTeXML map to publisher in Zotero)
@@ -423,7 +418,7 @@ function buildCiteKey (item,citekeys) {
     citeKeyFormatRemaining = citeKeyFormat;
     while (citeKeyConversionsRe.test(citeKeyFormatRemaining)) {
         if (counter > 100) {
-            Zotero.debug("Pathological BibTeX format: " + citeKeyFormat);
+            //Zotero.debug("Pathological BibTeX format: " + citeKeyFormat);
             break;
         }
         var m = citeKeyFormatRemaining.match(citeKeyConversionsRe);
@@ -435,7 +430,7 @@ function buildCiteKey (item,citekeys) {
         var f = citeKeyConversions[m[1]];
         if (typeof(f) == "function") {
             var value = f(flags, item);
-            Zotero.debug("Got value " + value + " for %" + m[1]);
+            //Zotero.debug("Got value " + value + " for %" + m[1]);
             //add conversion to basekey
             basekey = basekey + value;
         }
@@ -548,7 +543,7 @@ function doExport() {
 		}
 		
 		if(item.pages) {
-			storeField("pages", item.pages.replace("–", "-").replace("-","--"), itemFieldsMap, mapKeys);
+			storeField("pages", item.pages.replace("--", "–").replace("–", "-").replace("-","--"), itemFieldsMap, mapKeys);
 		}
 		
 		if(item.date) {
