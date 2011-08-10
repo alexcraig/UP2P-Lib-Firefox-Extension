@@ -475,7 +475,12 @@ function doExport() {
 		// Determine type
 		var type = zotero2bibtexTypeMap[item.itemType];
 		if (typeof(type) == "function") { type = type(item); }
-		if(!type) type = "misc";
+		
+		if(!type) {
+			// Skip this item if no equivalent bibtexml type could be found
+			// (probably an attachment)
+			continue;
+		}
 		
 		// Create a unique citation key
 		var citekey = buildCiteKey(item, citekeys);
