@@ -24,7 +24,7 @@
 */
 
 const ZOTERO_CONFIG = {
-	GUID: 'zotero@chnm.gmu.edu',
+	GUID: 'zotero.up2p@nmai.ca',
 	DB_REBUILD: false, // erase DB and recreate from schema
 	REPOSITORY_URL: 'https://repo.zotero.org/repo',
 	REPOSITORY_CHECK_INTERVAL: 86400, // 24 hours
