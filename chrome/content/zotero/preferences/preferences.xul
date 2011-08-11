@@ -164,6 +164,9 @@ To add a new preference:
 			<preference id="pref-storage-url" name="extensions.zotero.sync.storage.url" type="string" instantApply="true"/>
 			<preference id="pref-storage-username" name="extensions.zotero.sync.storage.username" type="string" instantApply="true"/>
 			<preference id="pref-group-storage-enabled" name="extensions.zotero.sync.storage.groups.enabled" type="bool"/>
+			<preference id="pref-up2p-sync" name="extensions.zotero.up2p.sync" type="bool"/>
+			<preference id="pref-up2p-node-url" name="extensions.zotero.up2p.sync.url" type="string" instantApply="true"/>
+			<preference id="pref-up2p-lib-comm-id" name="extensions.zotero.up2p.sync.community" type="string" instantApply="true"/>
 		</preferences>
 		
 		<tabbox>
@@ -322,6 +325,25 @@ To add a new preference:
 							</hbox>
 						</vbox>
 					</groupbox>
+					
+					<!-- U-P2P Synchronization Options -->
+					<!-- TODO: Localize -->
+					<groupbox>
+						<caption label="UP2P-Lib Synchronization"/>
+						
+						<vbox>
+							<checkbox label="Enable UP2P-Lib Synchronization" style="margin-top:.6em;" preference="pref-up2p-sync"/>
+
+							<label value="UP2P Node Address: " style="margin-top:.6em;"/>
+							<textbox preference="pref-up2p-node-url" />
+							
+							<label value="UP2P-Lib Community ID: " style="margin-top:.3em;"/>
+							<textbox preference="pref-up2p-lib-comm-id" />
+							
+							<label class="text-link" style="margin-top:.6em;" href="https://sites.google.com/a/nmai.ca/home/research-projects/universal-peer-to-peer" value="About UP2P-Lib"/>
+						</vbox>
+					</groupbox>
+					<!-- END U-P2P Synchronization Options -->
 				</tabpanel>
 				
 				<tabpanel id="zotero-reset" orient="vertical">

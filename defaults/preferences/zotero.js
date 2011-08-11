@@ -136,6 +136,9 @@ pref("extensions.zotero.sync.storage.maxDownloads", 4);
 pref("extensions.zotero.sync.storage.maxUploads", 4);
 pref("extensions.zotero.sync.storage.deleteDelayDays", 30);
 pref("extensions.zotero.sync.storage.groups.enabled", true);
+pref("extensions.zotero.up2p.sync", false);
+pref("extensions.zotero.up2p.sync.url", '');
+pref("extensions.zotero.up2p.sync.community", '2a53d21e393641d1d144f277941485f2');
 
 // Proxy
 pref("extensions.zotero.proxies.autoRecognize", true);

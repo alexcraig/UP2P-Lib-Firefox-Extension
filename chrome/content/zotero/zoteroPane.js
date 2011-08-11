@@ -2149,6 +2149,7 @@ var ZoteroPane = new function()
 			'deleteFromLibrary',
 			'mergeItems',
 			'sep3',
+			'up2pSync', 
 			'exportItems',
 			'createBib',
 			'loadReport',
@@ -2188,13 +2189,17 @@ var ZoteroPane = new function()
 				var multiple =  '.multiple';
 				
 				var items = this.getSelectedItems();
-				var canMerge = true, canIndex = true, canRecognize = true, canRename = true;
+				var canMerge = true, canIndex = true, canRecognize = true, canRename = true, canUp2pSync = true;
 				
 				if (!Zotero.Fulltext.pdfConverterIsRegistered()) {
 					canIndex = false;
 				}
 				
 				for each(var item in items) {
+					if(!item.isRegularItem()) {
+						canUp2pSync = false;
+					}
+					
 					if (canMerge && !item.isRegularItem() || itemGroup.isDuplicates()) {
 						canMerge = false;
 					}
@@ -2223,6 +2228,10 @@ var ZoteroPane = new function()
 				
 				if (canRecognize) {
 					show.push(m.recognizePDF);
+				}
+				
+				if (canUp2pSync && Zotero.Prefs.get("up2p.sync")) {
+					show.push(m.up2pSync);
 				}
 				
 				var canCreateParent = true;
@@ -2279,15 +2288,21 @@ var ZoteroPane = new function()
 				
 				// Disable actions in the trash
 				if (itemGroup.isTrash()) {
-					disable.push(m.deleteItem, m.deleteFromLibrary);
+					disable.push(m.deleteItem, m.deleteFromLibrary, m.up2pSync);
 				}
 				
 				if (item.isRegularItem()) {
 					show.push(m.addNote, m.addAttachments, m.sep2);
+					if(Zotero.Prefs.get("up2p.sync")) {
+						show.push(m.up2pSync);
+					}
 				}
 				
 				if (item.isAttachment()) {
 					var showSep4 = false;
+					
+					// Can't UP2P sync standalone attachments
+					disable.push(m.up2pSync);
 					
 					if (Zotero_RecognizePDF.canRecognize(item)) {
 						show.push(m.recognizePDF);
