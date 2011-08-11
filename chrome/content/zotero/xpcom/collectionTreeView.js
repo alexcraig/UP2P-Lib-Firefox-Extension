@@ -908,6 +908,12 @@ Zotero.CollectionTreeView.prototype._expandRow = function (row, forceOpen) {
 		this.trashNotEmpty = !!deletedItems;
 	}
 	
+	// Show UP2P sync folder
+	if(Zotero.Prefs.get("up2p.sync")) {
+		this._showRow(new Zotero.ItemGroup('up2psync', false), level, row + 1 + newRows);
+		newRows++;
+	}
+	
 	return newRows;
 }
 
@@ -1795,6 +1801,9 @@ Zotero.ItemGroup.prototype.__defineGetter__('id', function () {
 		
 		case 'group':
 			return 'G' + this.ref.id;
+			
+		case "up2psync":
+			return "UP2P"
 	}
 	
 	return '';
@@ -1853,6 +1862,11 @@ Zotero.ItemGroup.prototype.isShare = function()
 	return this.type == 'share';
 }
 
+Zotero.ItemGroup.prototype.isUp2pSync = function()
+{
+	return this.type == 'up2psync';
+}
+
 
 
 // Special
@@ -1861,7 +1875,7 @@ Zotero.ItemGroup.prototype.isWithinGroup = function () {
 }
 
 Zotero.ItemGroup.prototype.__defineGetter__('editable', function () {
-	if (this.isTrash() || this.isShare() || this.isBucket()) {
+	if (this.isTrash() || this.isShare() || this.isBucket() || this.isUp2pSync()) {
 		return false;
 	}
 	if (!this.isWithinGroup()) {
@@ -1884,7 +1898,7 @@ Zotero.ItemGroup.prototype.__defineGetter__('editable', function () {
 });
 
 Zotero.ItemGroup.prototype.__defineGetter__('filesEditable', function () {
-	if (this.isTrash() || this.isShare()) {
+	if (this.isTrash() || this.isShare() || this.isUp2pSync()) {
 		return false;
 	}
 	if (!this.isWithinGroup()) {
@@ -1914,6 +1928,10 @@ Zotero.ItemGroup.prototype.getName = function()
 		
 		case 'trash':
 			return Zotero.getString('pane.collections.trash');
+		
+		// TODO: Localize
+		case 'up2psync':
+			return "UP2P-Lib";
 		
 		case 'header':
 			return this.ref.label;

@@ -82,6 +82,7 @@ var ZoteroPane = new function()
 	this.relinkAttachment = relinkAttachment;
 	this.reportErrors = reportErrors;
 	this.displayErrorMessage = displayErrorMessage;
+	this.refreshCollectionTree = refreshCollectionTree;
 	
 	this.document = document;
 	
@@ -3648,6 +3649,10 @@ var ZoteroPane = new function()
 			self.setItemsPaneMessage(msg, true);
 		}
 		Zotero.debug(msg, 1);
+	}
+	
+	function refreshCollectionTree() {
+		ZoteroPane_Local.collectionsView.reload();
 	}
 	
 	this.displayStartupError = function(asPaneMessage) {
