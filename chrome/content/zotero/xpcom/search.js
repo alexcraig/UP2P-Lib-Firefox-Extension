@@ -1014,6 +1014,10 @@ Zotero.Search.prototype._buildQuery = function(){
 					var deleted = this._conditions[i].operator == 'true';
 					continue;
 				
+				case 'up2pSync':
+					var up2pSync = this._conditions[i].operator == 'true';
+					continue;
+				
 				case 'noChildren':
 					var noChildren = this._conditions[i]['operator']=='true';
 					continue;
@@ -1090,6 +1094,10 @@ Zotero.Search.prototype._buildQuery = function(){
 			+ "(SELECT itemID FROM itemAttachments WHERE sourceItemID IS NOT NULL "
 			+ "UNION SELECT itemID FROM itemNotes WHERE sourceItemID IS NOT NULL)"
 			+ ")";
+	}
+	
+	if (up2pSync) {
+		sql += " AND (itemID IN (SELECT itemID FROM up2pSyncedItems))";
 	}
 	
 	if (this._hasPrimaryConditions) {
@@ -1775,6 +1783,14 @@ Zotero.SearchConditions = new function(){
 			
 			{
 				name: 'deleted',
+				operators: {
+					true: true,
+					false: true
+				}
+			},
+			
+			{
+				name: 'up2pSync',
 				operators: {
 					true: true,
 					false: true

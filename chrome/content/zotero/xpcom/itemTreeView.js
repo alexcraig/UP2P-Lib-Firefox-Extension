@@ -1539,6 +1539,43 @@ Zotero.ItemTreeView.prototype.deleteSelection = function (force)
 }
 
 
+/**
+ * Synchronizes the selected items with the UP2P node specified in the Zotero preferences
+ */
+Zotero.ItemTreeView.prototype.up2pSyncSelection = function ()
+{
+	Zotero.debug("============ ITEM_TREE_VIEW.UP2P SYNC");
+	
+	if (this.selection.count == 0) {
+		return;
+	}
+	
+	this._treebox.beginUpdateBatch();
+	
+	// Collapse open items
+	for (var i=0; i<this.rowCount; i++) {
+		if (this.selection.isSelected(i) && this.isContainer(i) && this.isContainerOpen(i)) {
+			this.toggleOpenState(i, true);
+		}
+	}
+	this._refreshHashMap();
+	
+	// Create an array of selected items
+	var ids = [];
+	var start = {};
+	var end = {};
+	for (var i=0, len=this.selection.getRangeCount(); i<len; i++)
+	{
+		this.selection.getRangeAt(i,start,end);
+		for (var j=start.value; j<=end.value; j++)
+			ids.push(this._getItemAtRow(j).ref.id);
+	}
+	
+	Zotero.Items.up2pSync(ids);
+	this._treebox.endUpdateBatch();
+}
+
+
 /*
  * Set the tags filter on the view
  */

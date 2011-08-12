@@ -214,6 +214,10 @@ CREATE TABLE deletedItems (
 );
 CREATE INDEX deletedItems_dateDeleted ON deletedItems(dateDeleted);
 
+CREATE TABLE up2pSyncedItems (
+    itemID INTEGER PRIMARY KEY
+);
+
 CREATE TABLE relations (
     libraryID INT NOT NULL,
     subject TEXT NOT NULL,

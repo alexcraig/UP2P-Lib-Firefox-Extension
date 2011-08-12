@@ -38,6 +38,7 @@ Zotero.Items = new function() {
 	this.add = add;
 	this.cacheFields = cacheFields;
 	this.erase = erase;
+	this.up2pSync = up2pSync;
 	this.getFirstCreatorSQL = getFirstCreatorSQL;
 	this.getSortTitle = getSortTitle;
 	
@@ -508,6 +509,55 @@ Zotero.Items = new function() {
 			if (usiDisabled) {
 				Zotero.UnresponsiveScriptIndicator.enable();
 			}
+		}
+	}
+	
+	
+	/**
+	 * Attempts to synchronize items with the passed ID's with the UP2P node specified
+	 * in the preferences
+	 *
+	 * @param	{Integer|Integer[]}	ids					Item ids
+	 */
+	function up2pSync(ids) {
+		Zotero.debug("============ ITEMS.UP2P SYNC");
+		ids = Zotero.flattenArguments(ids);
+		
+		for each(var id in ids) {
+			var item = this.get(id);
+			Zotero.debug("======= BEFORE SYNC (id: " + id + "): " + item.up2pSync);
+		}
+
+		var usiDisabled = Zotero.UnresponsiveScriptIndicator.disable();
+		try {
+			Zotero.DB.beginTransaction();
+			
+			for each(var id in ids) {
+				var item = this.get(id);
+				if (!item) {
+					Zotero.debug('Item ' + id + ' does not exist in Items.up2pSync()!', 1);
+					continue;
+				}
+				item.up2pSync = true;
+				item.save();
+			}
+			
+			Zotero.DB.commitTransaction();
+		}
+		catch (e) {
+			Zotero.DB.rollbackTransaction();
+			throw (e);
+		}
+		finally {
+			if (usiDisabled) {
+				Zotero.UnresponsiveScriptIndicator.enable();
+			}
+		}
+		
+		// TESTING
+		for each(var id in ids) {
+			var item = this.get(id);
+			Zotero.debug("======= AFTER SYNC (id: " + id + "): " + item.up2pSync);
 		}
 	}
 	

@@ -69,6 +69,7 @@ Zotero.Item.prototype._init = function () {
 	this._changedItemData = false;
 	this._changedCreators = false;
 	this._changedDeleted = false;
+	this._changedUp2pSync = false;
 	this._changedNote = false;
 	this._changedSource = false;
 	this._changedAttachmentData = false;
@@ -76,6 +77,7 @@ Zotero.Item.prototype._init = function () {
 	this._previousData = null;
 	
 	this._deleted = null;
+	this._up2pSync = null;
 	this._noteTitle = null;
 	this._noteText = null;
 	this._noteAccessTime = null;
@@ -394,6 +396,7 @@ Zotero.Item.prototype.hasChanged = function() {
 		|| this._changedItemData
 		|| this._changedCreators
 		|| this._changedDeleted
+		|| this._changedUp2pSync
 		|| this._changedNote
 		|| this._changedSource
 		|| this._changedAttachmentData);
@@ -1101,6 +1104,37 @@ Zotero.Item.prototype.__defineSetter__('deleted', function (val) {
 	this._deleted = deleted;
 });
 
+Zotero.Item.prototype.__defineGetter__('up2pSync', function () {
+	if (this._up2pSync !== null) {
+		return this._up2pSync;
+	}
+	
+	if (!this.id) {
+		return false;
+	}
+	
+	var sql = "SELECT COUNT(*) FROM up2pSyncedItems WHERE itemID=?";
+	var dbResult = Zotero.DB.valueQuery(sql, this.id);
+	Zotero.debug("======= UP2P SYNC GETTER DB: " + dbResult);
+	var up2pSync = !!dbResult;
+	this._up2pSync = up2pSync;
+	return up2pSync;
+});
+
+
+Zotero.Item.prototype.__defineSetter__('up2pSync', function (val) {
+	var up2pSync = !!val;
+	
+	if (this.up2pSync == up2pSync) {
+		Zotero.debug("UP2P synchroniation state hasn't changed for item " + this.id);
+		return;
+	}
+	
+	if (!this._changedUp2pSync) {
+		this._changedUp2pSync = true;
+	}
+	this._up2pSync = up2pSync;
+});
 
 Zotero.Item.prototype.addRelatedItem = function (itemID) {
 	var parsedInt = parseInt(itemID);
@@ -1399,13 +1433,24 @@ Zotero.Item.prototype.save = function() {
 				}
 			}
 			
-			
+			// Deleted State
 			if (this._changedDeleted) {
 				if (this.deleted) {
 					sql = "REPLACE INTO deletedItems (itemID) VALUES (?)";
 				}
 				else {
 					sql = "DELETE FROM deletedItems WHERE itemID=?";
+				}
+				Zotero.DB.query(sql, itemID);
+			}
+			
+			// UP2P Sync State
+			if (this._changedUp2pSync) {
+				if (this.up2pSync) {
+					sql = "REPLACE INTO up2pSyncedItems (itemID) VALUES (?)";
+				}
+				else {
+					sql = "DELETE FROM up2pSyncedItems WHERE itemID=?";
 				}
 				Zotero.DB.query(sql, itemID);
 			}
@@ -1781,6 +1826,17 @@ Zotero.Item.prototype.save = function() {
 					sql = "DELETE FROM deletedItems WHERE itemID=?";
 				}
 				Zotero.DB.query(sql, this.id);
+			}
+			
+			// UP2P Sync State
+			if (this._changedUp2pSync) {
+				if (this.up2pSync) {
+					sql = "REPLACE INTO up2pSyncedItems (itemID) VALUES (?)";
+				}
+				else {
+					sql = "DELETE FROM up2pSyncedItems WHERE itemID=?";
+				}
+				Zotero.DB.query(sql, itemID);
 			}
 			
 			

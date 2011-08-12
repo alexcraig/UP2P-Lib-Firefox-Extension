@@ -275,7 +275,7 @@
 					<menuitem oncommand="ZoteroPane_Local.mergeSelectedItems();" label="Merge Items…"/>
 					<menuseparator/>
 					<!-- TODO: Localize -->
-					<menuitem label="Sync with U-P2P Node" oncommand="Zotero.debug('===== Sync with U-P2P Node');"/>
+					<menuitem label="Sync with U-P2P Node" oncommand="ZoteroPane_Local.up2pSyncSelectedItems();"/>
 					<menuitem oncommand="Zotero_File_Interface.exportItems();"/>
 					<menuitem oncommand="Zotero_File_Interface.bibliographyFromItems();"/>
 					<menuitem oncommand="Zotero_Report_Interface.loadItemReport()"/>

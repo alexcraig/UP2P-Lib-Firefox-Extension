@@ -2025,6 +2025,9 @@ Zotero.ItemGroup.prototype.getSearchObject = function() {
 		else if (this.isTrash()) {
 			s.addCondition('deleted', 'true');
 		}
+		else if (this.isUp2pSync()) {
+			s.addCondition('up2pSync', 'true');
+		}
 		else {
 			throw ('Invalid search mode in Zotero.ItemGroup.getSearchObject()');
 		}
@@ -2034,6 +2037,9 @@ Zotero.ItemGroup.prototype.getSearchObject = function() {
 	var s2 = new Zotero.Search();
 	if (this.isTrash()) {
 		s2.addCondition('deleted', 'true');
+	}
+	else if (this.isUp2pSync()) {
+		s2.addCondition('up2pSync', 'true');
 	}
 	s2.setScope(s, includeScopeChildren);
 	

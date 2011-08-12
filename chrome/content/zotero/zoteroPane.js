@@ -1395,6 +1395,46 @@ var ZoteroPane = new function()
 	}
 	
 	
+	this.up2pSyncSelectedItems = function() {
+		Zotero.debug("============ ZOTEROPANE.UP2P SYNC");
+		
+		if (!this.itemsView || !this.itemsView.selection.count) {
+			return;
+		}
+		var itemGroup = this.itemsView._itemGroup;
+		
+		if (!itemGroup.isTrash() && !itemGroup.isBucket() && !this.canEdit()) {
+			this.displayCannotEditLibraryMessage();
+			return;
+		}
+		
+		var toSync = {
+			title: Zotero.getString('pane.items.up2p.title'),
+			text: Zotero.getString(
+				'pane.items.up2p' + (this.itemsView.selection.count > 1 ? '.multiple' : '')
+			)
+		};
+		
+		// Do nothing if any selected items are already synchronized
+		var start = {};
+		var end = {};
+		for (var i=0, len=this.itemsView.selection.getRangeCount(); i<len; i++) {
+			this.itemsView.selection.getRangeAt(i, start, end);
+			for (var j=start.value; j<=end.value; j++) {
+				if (this.itemsView._getItemAtRow(j).ref.up2pSync) {
+					Zotero.debug("up2pSyncSelectedItems: Item is already synchronized.");
+					return;
+				}
+			}
+		}
+
+		var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+										.getService(Components.interfaces.nsIPromptService);
+		if (!prompt || promptService.confirm(window, toSync.title, toSync.text)) {
+			this.itemsView.up2pSyncSelection();
+		}
+	}
+	
 	this.deleteSelectedItem = function () {
 		Zotero.debug("ZoteroPane_Local.deleteSelectedItem() is deprecated -- use ZoteroPane_Local.deleteSelectedItems()");
 		this.deleteSelectedItems();
