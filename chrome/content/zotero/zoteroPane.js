@@ -2237,7 +2237,8 @@ var ZoteroPane = new function()
 				}
 				
 				for each(var item in items) {
-					if(!item.isRegularItem()) {
+					if(!item.isRegularItem() || item.up2pSync) {
+						// For now, disable the sync menu option if a single item is not sync'd
 						canUp2pSync = false;
 					}
 					
@@ -2334,7 +2335,7 @@ var ZoteroPane = new function()
 				
 				if (item.isRegularItem()) {
 					show.push(m.addNote, m.addAttachments, m.sep2);
-					if(Zotero.Prefs.get("up2p.sync")) {
+					if(Zotero.Prefs.get("up2p.sync") && !item.up2pSync) {
 						show.push(m.up2pSync);
 					}
 				}

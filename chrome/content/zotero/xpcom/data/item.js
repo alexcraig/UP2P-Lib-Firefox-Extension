@@ -1836,7 +1836,7 @@ Zotero.Item.prototype.save = function() {
 				else {
 					sql = "DELETE FROM up2pSyncedItems WHERE itemID=?";
 				}
-				Zotero.DB.query(sql, itemID);
+				Zotero.DB.query(sql, this.id);
 			}
 			
 			
