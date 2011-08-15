@@ -1526,6 +1526,9 @@ Zotero.ItemTreeView.prototype.deleteSelection = function (force)
 	else if (itemGroup.isTrash()) {
 		Zotero.Items.erase(ids);
 	}
+	else if (itemGroup.isUp2pSync()) {
+		Zotero.Items.erase(ids);
+	}
 	else if (itemGroup.isGroup() || (force && itemGroup.isWithinGroup())) {
 		Zotero.Items.erase(ids);
 	}
