@@ -469,9 +469,20 @@ function doExport() {
 	Zotero.write('<?xml version="1.0" encoding="UTF-8" ?>');
 	
 	var citekeys = new Object();
-	var item;
-	Zotero.write("<batch>");
-	while(item = Zotero.nextItem()) {
+	// KLUDGE - Sandbox provides no way to get the number of entries being exported.
+	// Instead, read all the entries into an array and check the size of the array.
+	
+	var exportItems = [];
+	var exportItem;
+	while(exportItem = Zotero.nextItem()) {
+		exportItems.push(exportItem);
+	}
+	
+	if(exportItems.length > 1) {
+		Zotero.write("\n<batch>");
+	}
+	
+	for each(var item in exportItems) {
 		// Determine type
 		var type = zotero2bibtexTypeMap[item.itemType];
 		if (typeof(type) == "function") { type = type(item); }
@@ -631,5 +642,8 @@ function doExport() {
 		}
 		Zotero.write("\n</entry>");
 	}
-	Zotero.write("\n</batch>");
+	
+	if(exportItems.length > 1) {
+		Zotero.write("\n</batch>");
+	}
 }
