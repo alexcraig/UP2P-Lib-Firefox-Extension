@@ -527,7 +527,7 @@ Zotero.Items = new function() {
 			var item = this.get(id);
 			Zotero.debug("======= BEFORE SYNC (id: " + id + "): " + item.up2pSync);
 		}
-
+		
 		var usiDisabled = Zotero.UnresponsiveScriptIndicator.disable();
 		try {
 			Zotero.DB.beginTransaction();
@@ -538,8 +538,45 @@ Zotero.Items = new function() {
 					Zotero.debug('Item ' + id + ' does not exist in Items.up2pSync()!', 1);
 					continue;
 				}
-				item.up2pSync = true;
-				item.save();
+				
+				var newItem = new Zotero.Item(item.itemTypeID);
+				// newItem.libraryID = item.libraryID;
+				// DEBUG: save here because clone() doesn't currently work on unsaved tagged items
+				var newId = newItem.save();
+				var newItem = Zotero.Items.get(newId);
+				item.clone(false, newItem);
+				newItem.up2pSync = true;
+				
+				// Make a new copy of any PDF attachments that were included with the resource
+				var attachments = item.getAttachments();
+				for (var i in attachments) {
+					Zotero.debug("===== attachments[i]: " + attachments[i]);
+					var attachment = Zotero.Items.get(attachments[i]);
+					Zotero.debug("===== Processing attachment: " + attachment.id);
+					Zotero.debug("===== Mime Type: " + attachment.attachmentMIMEType);
+					
+					if(attachment.attachmentMIMEType == "application/pdf") {
+						// Generate the new attachment item
+						var newAttachment = new Zotero.Item(attachment.itemTypeID);
+						attachment.clone(false, newAttachment, true);
+						newAttachment.setSource(newId);
+						newAttachment.up2pSync = true;
+						var newAttachId = newAttachment.save();
+						newAttachment = Zotero.Items.get(newAttachId);
+						Zotero.debug("===== Got new attachment id: " + newAttachId);
+						
+						// Copy the actual file to the new attachment item's storage
+						// location
+						var file = attachment.getFile();
+						var newStorageDir = Zotero.Attachments.getStorageDirectory(newAttachId);
+						Zotero.debug("===== New file path: " + newStorageDir.path);
+						file.copyTo(newStorageDir, file.leafName);
+						Zotero.debug("===== Copied file: " + file.leafName);
+					}
+				}
+				
+				newItem.save();
+				Zotero.debug("===== Saved new item");
 			}
 			
 			Zotero.DB.commitTransaction();
@@ -552,12 +589,6 @@ Zotero.Items = new function() {
 			if (usiDisabled) {
 				Zotero.UnresponsiveScriptIndicator.enable();
 			}
-		}
-		
-		// TESTING
-		for each(var id in ids) {
-			var item = this.get(id);
-			Zotero.debug("======= AFTER SYNC (id: " + id + "): " + item.up2pSync);
 		}
 	}
 	
