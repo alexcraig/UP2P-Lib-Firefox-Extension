@@ -592,7 +592,11 @@ Zotero.Items = new function() {
 					up2pTranslator.setItems([newItem]);
 					// TODO: Just use the main storage directory for now, need to figure out
 					// a better way to do this... (maybe attach the XML as a static attachment?)
-					var exportLocation = Zotero.getStorageDirectory();
+					// var exportLocation = Zotero.getStorageDirectory();
+					var exportLocation = Zotero.Attachments.getStorageDirectory(newId);
+					if(!exportLocation.exists()) {
+						exportLocation.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 0700);
+					}
 					exportLocation.append("up2p_" + newItem.key + ".xml");
 					up2pTranslator.setLocation(exportLocation);
 					

@@ -4126,8 +4126,8 @@ Zotero.Item.prototype.erase = function() {
 	
 	// Regular item
 	
-	// If flag given, delete child notes and files
 	else {
+		// If flag given, delete child notes and files
 		var sql = "SELECT itemID FROM itemNotes WHERE sourceItemID=?1 UNION "
 			+ "SELECT itemID FROM itemAttachments WHERE sourceItemID=?1";
 		var toDelete = Zotero.DB.columnQuery(sql, [this.id]);
@@ -4138,7 +4138,14 @@ Zotero.Item.prototype.erase = function() {
 				obj.erase();
 			}
 		}
+		
+		// Delete storage directory (should only contain up2p sync XML)
+		var file = Zotero.Attachments.getStorageDirectory(this.id);
+		if (file.exists()) {
+			file.remove(true);
+		}
 	}
+	
 	
 	// Flag related items for notification
 	var relateds = this._getRelatedItemsBidirectional();

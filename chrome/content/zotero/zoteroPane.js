@@ -1452,7 +1452,8 @@ var ZoteroPane = new function()
 		}
 		var itemGroup = this.itemsView._itemGroup;
 		
-		if (!itemGroup.isTrash() && !itemGroup.isBucket() && !this.canEdit()) {
+		if (!itemGroup.isTrash() && !itemGroup.isBucket() && !itemGroup.isUp2pSync()
+			&& !this.canEdit()) {
 			this.displayCannotEditLibraryMessage();
 			return;
 		}
@@ -2338,6 +2339,12 @@ var ZoteroPane = new function()
 					if(Zotero.Prefs.get("up2p.sync") && !item.up2pSync) {
 						show.push(m.up2pSync);
 					}
+					
+					// Special case: Allow deletions from the UP2P sync collection even
+					// though the files are not edittable
+					if(itemGroup.isUp2pSync()) {
+						show.push(m.deleteFromLibrary);
+					}
 				}
 				
 				if (item.isAttachment()) {
@@ -2383,7 +2390,8 @@ var ZoteroPane = new function()
 				this.updateAttachmentButtonMenu(popup);
 				
 				// Block certain actions on files if no access
-				if (item.isImportedAttachment() && !itemGroup.filesEditable) {
+				if (item.isImportedAttachment() && !itemGroup.filesEditable
+						&& !itemGroup.isUp2pSync()) {
 					var d = [m.deleteFromLibrary, m.createParent, m.renameAttachments];
 					for each(var val in d) {
 						disable.push(val);
@@ -2416,7 +2424,16 @@ var ZoteroPane = new function()
 							continue;
 					}
 				}
+				
+				// Always allow deletions from the UP2P-Sync community
+				if(itemGroup.isUp2pSync() && i == "deleteFromLibrary") {
+					Zotero.debug("===== Skipped deleteItem disable");
+					continue;
+				}
+				
+				Zotero.debug("===== Disabling: " + i);
 				disable.push(m[i]);
+				
 			}
 		}
 		
