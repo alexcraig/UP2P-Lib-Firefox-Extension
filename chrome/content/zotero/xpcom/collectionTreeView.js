@@ -895,6 +895,7 @@ Zotero.CollectionTreeView.prototype._expandRow = function (row, forceOpen) {
 		s.name = Zotero.getString('pane.collections.unfiled');
 		s.addCondition('libraryID', 'is', isGroup ? group.libraryID : null);
 		s.addCondition('unfiled', 'true');
+		s.addCondition('up2pSync', 'false');
 		this._showRow(new Zotero.ItemGroup('unfiled', s), level, row + 1 + newRows);
 		newRows++;
 	}

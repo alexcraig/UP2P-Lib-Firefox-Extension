@@ -1098,6 +1098,8 @@ Zotero.Search.prototype._buildQuery = function(){
 	
 	if (up2pSync) {
 		sql += " AND (itemID IN (SELECT itemID FROM up2pSyncedItems))";
+	} if (!up2pSync) {
+		sql += " AND (itemID NOT IN (SELECT itemID FROM up2pSyncedItems))";
 	}
 	
 	if (this._hasPrimaryConditions) {
