@@ -2427,11 +2427,9 @@ var ZoteroPane = new function()
 				
 				// Always allow deletions from the UP2P-Sync community
 				if(itemGroup.isUp2pSync() && i == "deleteFromLibrary") {
-					Zotero.debug("===== Skipped deleteItem disable");
 					continue;
 				}
 				
-				Zotero.debug("===== Disabling: " + i);
 				disable.push(m[i]);
 				
 			}

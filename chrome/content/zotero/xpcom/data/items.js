@@ -541,12 +541,12 @@ Zotero.Items = new function() {
 				
 				// Make a duplicate copy of the item
 				var newItem = new Zotero.Item(item.itemTypeID);
+				newItem.up2pSync = true;
 				// newItem.libraryID = item.libraryID;
 				// DEBUG: save here because clone() doesn't currently work on unsaved tagged items
 				var newId = newItem.save();
 				var newItem = Zotero.Items.get(newId);
 				item.clone(false, newItem);
-				newItem.up2pSync = true;
 				
 				// Make a new copy of any PDF attachments that were included with the resource
 				var attachments = item.getAttachments();
@@ -577,10 +577,9 @@ Zotero.Items = new function() {
 				}
 				
 				newItem.save();
+				Zotero.debug("===== Saved new item");
 				
 				try {
-					Zotero.debug("===== Saved new item");
-					
 					// Generate a UP2P / BibTeXML resource file for the document
 					var up2pTranslator = new Zotero.Translate.Export();
 					// TODO: Might want to put this into the preferences pane
@@ -600,10 +599,29 @@ Zotero.Items = new function() {
 					exportLocation.append("up2p_" + newItem.key + ".xml");
 					up2pTranslator.setLocation(exportLocation);
 					
-					Zotero.debug("===== Setup translator with location: " +
-						exportLocation.path);
 					up2pTranslator.translate(false, false);
-					Zotero.debug("===== Generated XML in main storage dir");
+					Zotero.debug("===== Generated XML in: " + exportLocation.path);
+					
+					
+					// Now, submit the file to the U-P2P node
+					var xmlString = Zotero.File.getContents(exportLocation);
+					var commId = Zotero.Prefs.get("up2p.sync.community");
+					var uploadUrl = Zotero.Prefs.get("up2p.sync.url") + "create";
+					var xmlhttp = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"]
+							.createInstance();
+					
+					var formData = Components.classes["@mozilla.org/files/formdata;1"]
+							.createInstance(Components.interfaces.nsIDOMFormData);
+					formData.append("up2p:community", commId);
+					formData.append("up2p:rawxml", xmlString);
+					formData.append("up2p:filename", newItem.key + ".xml");
+					
+					// Must use synchronous queries for multipart form data
+					xmlhttp.open('POST', uploadUrl, true);
+					// Prevent certificate/authentication dialogs from popping up
+					// xmlhttp.mozBackgroundRequest = true;
+					xmlhttp.send(formData);
+					
 				} catch (exception) {
 					Zotero.debug(exception);
 				}
