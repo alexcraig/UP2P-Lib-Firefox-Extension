@@ -539,6 +539,7 @@ Zotero.Items = new function() {
 					continue;
 				}
 				
+				// Make a duplicate copy of the item
 				var newItem = new Zotero.Item(item.itemTypeID);
 				// newItem.libraryID = item.libraryID;
 				// DEBUG: save here because clone() doesn't currently work on unsaved tagged items
@@ -576,7 +577,32 @@ Zotero.Items = new function() {
 				}
 				
 				newItem.save();
-				Zotero.debug("===== Saved new item");
+				
+				try {
+					Zotero.debug("===== Saved new item");
+					
+					// Generate a UP2P / BibTeXML resource file for the document
+					var up2pTranslator = new Zotero.Translate.Export();
+					// TODO: Might want to put this into the preferences pane
+					up2pTranslator.setTranslator(
+							Zotero.Translators.get("2539A338-98F5-11E0-9A51-59F44824019B"));
+					Zotero.debug("===== Loaded translator: " + up2pTranslator.id
+							+ " type: " + up2pTranslator.translatorType);
+					
+					up2pTranslator.setItems([newItem]);
+					// TODO: Just use the main storage directory for now, need to figure out
+					// a better way to do this... (maybe attach the XML as a static attachment?)
+					var exportLocation = Zotero.getStorageDirectory();
+					exportLocation.append("up2p_" + newItem.key + ".xml");
+					up2pTranslator.setLocation(exportLocation);
+					
+					Zotero.debug("===== Setup translator with location: " +
+						exportLocation.path);
+					up2pTranslator.translate(false, false);
+					Zotero.debug("===== Generated XML in main storage dir");
+				} catch (exception) {
+					Zotero.debug(exception);
+				}
 			}
 			
 			Zotero.DB.commitTransaction();
