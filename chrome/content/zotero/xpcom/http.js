@@ -77,6 +77,72 @@ Zotero.HTTP = new function() {
 	}
 	
 	/**
+	 * Sends a synchronous POST request with encoding type "mulitpart/form-data" to
+	 * the specified URL, and returns the request object after the request has been
+	 * sent
+	 *
+	 * @param {String} url URL to request
+	 * @param {String, String}[] A list of name, value pairs that contains any text parameters
+     *    that should be sent with the request
+	 * @param {String, String, nsIFile}[] A list of name, filename, file tuples that contains any 
+	 *    files that should be included with the request body
+	 */
+	this.doMultipartPost = function(url, textParams, fileParams) {
+		
+		var httpRequest = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"]
+				.createInstance();
+				
+		// Prepare the MIME POST data
+		
+		var newline = '\r\n';
+		var boundaryString = '5572c28b-dbf9-4fc2-8e30-557e12c70d00';
+		var boundary = '--' + boundaryString;
+		var requestBody = "";
+		
+		for each(var textParam in textParams) {
+			requestBody = requestBody + boundary + newline
+					+ 'Content-Disposition: form-data; name="' + textParam.name + '"' + newline
+					+ newline
+					+ textParam.value + newline;
+		}
+		
+		for each(var fileParam in fileParams) {
+			var stream = Components.classes["@mozilla.org/network/file-input-stream;1"]
+					.createInstance(Components.interfaces.nsIFileInputStream);
+			stream.init(fileParam.file, 0x01, 00004, 1<<2);  // Close on file end
+			var bstream =  Components.classes["@mozilla.org/network/buffered-input-stream;1"]
+					.getService();
+			bstream.QueryInterface(Components.interfaces.nsIBufferedInputStream);
+			bstream.init(stream, 1000);
+			bstream.QueryInterface(Components.interfaces.nsIInputStream);
+			binary = Components.classes["@mozilla.org/binaryinputstream;1"]
+					.createInstance(Components.interfaces.nsIBinaryInputStream);
+			binary.setInputStream (bstream);
+			
+			// Todo: Filenames may need special processing
+			requestBody = requestBody + boundary + newline
+				+ 'Content-Disposition: form-data; name="' + fileParam.name + '"; filename="'
+				+ fileParam.filename + '"' + newline
+				+ 'Content-Type: application/octet-stream' + newline
+				+ 'Content-Transfer-Encoding: binary' + newline
+				+ newline
+				+ binary.readBytes(binary.available()) + newline;
+		}
+		requestBody = requestBody + boundary + "--";
+		
+		Zotero.debug("\nSTART:\n" + requestBody + "\nEND\n");
+		
+		httpRequest.open('POST', url, true);
+		httpRequest.setRequestHeader("Content-type", "multipart/form-data; \"boundary=\"" 
+				+ boundaryString + "\"");
+		httpRequest.setRequestHeader("Connection", "Keep-Alive");
+		httpRequest.setRequestHeader("Accept", "[star]/[star]");
+		httpRequest.setRequestHeader("Content-length", requestBody.length);
+		httpRequest.sendAsBinary(requestBody);
+		return httpRequest;
+	}
+	
+	/**
 	* Send an HTTP POST request via XMLHTTPRequest
 	*
 	* @param {String} url URL to request

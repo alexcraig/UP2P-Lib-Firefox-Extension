@@ -666,24 +666,7 @@ Zotero.Items = new function() {
 				httpRequest.setRequestHeader("Accept", "[star]/[star]");
 				httpRequest.setRequestHeader("Content-length", requestBody.length);
 				httpRequest.sendAsBinary(requestBody);
-				
-				/*
-				// Old, easy method (no way to include files using this method
-				var formData = Components.classes["@mozilla.org/files/formdata;1"]
-						.createInstance(Components.interfaces.nsIDOMFormData);
-				formData.append("up2p:community", commId);
-				formData.append("up2p:rawxml", xmlString);
-				formData.append("up2p:filename", newItem.key + ".xml");
-				for each(var file in attachFiles) {
-					Zotero.debug("===== Attaching FILE: " + file.leafName);
-					var uploadFile = File(file.path);
-					formData.append("up2p:filename", uploadFile);
-				}
-				
-				// Must use synchronous queries for multipart form data
-				xmlhttp.open('POST', uploadUrl, true);
-				xmlhttp.send(formData);
-				*/
+
 			}
 			
 			Zotero.DB.commitTransaction();
