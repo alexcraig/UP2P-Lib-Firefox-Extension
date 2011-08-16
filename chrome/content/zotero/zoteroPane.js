@@ -1431,7 +1431,11 @@ var ZoteroPane = new function()
 		var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
 										.getService(Components.interfaces.nsIPromptService);
 		if (!prompt || promptService.confirm(window, toSync.title, toSync.text)) {
-			this.itemsView.up2pSyncSelection();
+			try {
+				this.itemsView.up2pSyncSelection();
+			} catch (e) {
+				promptService.alert(null, "UP2 Sync Error", e.message);
+			}
 		}
 	}
 	

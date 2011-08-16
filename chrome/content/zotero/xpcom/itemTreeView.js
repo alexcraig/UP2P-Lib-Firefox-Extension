@@ -1573,9 +1573,11 @@ Zotero.ItemTreeView.prototype.up2pSyncSelection = function ()
 		for (var j=start.value; j<=end.value; j++)
 			ids.push(this._getItemAtRow(j).ref.id);
 	}
-	
-	Zotero.Items.up2pSync(ids);
-	this._treebox.endUpdateBatch();
+	try {
+		Zotero.Items.up2pSync(ids);
+	} finally {
+		this._treebox.endUpdateBatch();
+	}
 }
 
 

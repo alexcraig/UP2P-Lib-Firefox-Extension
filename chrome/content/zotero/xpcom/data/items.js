@@ -523,25 +523,22 @@ Zotero.Items = new function() {
 		Zotero.debug("============ ITEMS.UP2P SYNC");
 		ids = Zotero.flattenArguments(ids);
 		
-		for each(var id in ids) {
-			var item = this.get(id);
-			Zotero.debug("======= BEFORE SYNC (id: " + id + "): " + item.up2pSync);
-		}
-		
 		var usiDisabled = Zotero.UnresponsiveScriptIndicator.disable();
+		
 		try {
 			Zotero.DB.beginTransaction();
 			
 			for each(var id in ids) {
 				var attachFiles = [];
-				
 				var item = this.get(id);
+				
 				if (!item) {
 					Zotero.debug('Item ' + id + ' does not exist in Items.up2pSync()!', 1);
 					continue;
 				}
 				
-				// Make a duplicate copy of the item
+				
+				// ===== Make a duplicate copy of the item, including all attachments =====
 				var newItem = new Zotero.Item(item.itemTypeID);
 				newItem.up2pSync = true;
 				// newItem.libraryID = item.libraryID;
@@ -553,10 +550,7 @@ Zotero.Items = new function() {
 				// Make a new copy of any PDF attachments that were included with the resource
 				var attachments = item.getAttachments();
 				for (var i in attachments) {
-					Zotero.debug("===== attachments[i]: " + attachments[i]);
 					var attachment = Zotero.Items.get(attachments[i]);
-					Zotero.debug("===== Processing attachment: " + attachment.id);
-					Zotero.debug("===== Mime Type: " + attachment.attachmentMIMEType);
 					
 					if(attachment.attachmentMIMEType == "application/pdf") {
 						// Generate the new attachment item
@@ -566,7 +560,6 @@ Zotero.Items = new function() {
 						newAttachment.up2pSync = true;
 						var newAttachId = newAttachment.save();
 						newAttachment = Zotero.Items.get(newAttachId);
-						Zotero.debug("===== Got new attachment id: " + newAttachId);
 						
 						// Copy the actual file to the new attachment item's storage
 						// location
@@ -582,16 +575,15 @@ Zotero.Items = new function() {
 						);
 						
 						var newStorageDir = Zotero.Attachments.getStorageDirectory(newAttachId);
-						Zotero.debug("===== New file path: " + newStorageDir.path);
 						file.copyTo(newStorageDir, file.leafName);
-						Zotero.debug("===== Copied file: " + file.leafName);
 					}
 				}
 				
 				newItem.save();
 				Zotero.debug("===== Saved new item");
 				
-				// Generate a UP2P / BibTeXML resource file for the document
+				
+				// ===== Generate a BibTeXML file for the duplicated entry, and store it  =====
 				// TODO: Might want to put this ID into the preferences pane
 				var translator = Zotero.Translators.get("2539A338-98F5-11E0-9A51-59F44824019B");
 				var up2pTranslator = new Zotero.Translate.Export();
@@ -612,7 +604,7 @@ Zotero.Items = new function() {
 				exportLocation.append(newItem.key + ".xml");
 				
 				
-				// Now, submit the file to the U-P2P node
+				// ===== Submit BibTeXML the file (and attachments) to UP2P =====
 				var xmlString = Zotero.File.getContents(exportLocation);
 				var commId = Zotero.Prefs.get("up2p.sync.community");
 				var uploadUrl = Zotero.Prefs.get("up2p.sync.url") + "create";
@@ -624,16 +616,48 @@ Zotero.Items = new function() {
 					{name: "up2p:rawxml",
 					 value: xmlString},
 					{name: "up2p:filename",
-					 value: newItem.key + ".xml"}
+					 value: newItem.key + ".xml"},
+					{name: "up2p:fetchxml",
+					 value: "true"}
 				);
 				
 				var httpRequest = Zotero.HTTP.doMultipartPost(uploadUrl, textParams, attachFiles);
+				var responseStatus;
+				
+				try {
+					responseStatus = httpRequest.status;
+				} catch (e) {
+					throw new Error("UP2P Sync: Attempted connection to URL: " + uploadUrl 
+							+ " failed to return a status code. Please check to ensure that the"
+							+ " URL provided in the preferences page is valid.");
+				}
+				
+				if (responseStatus == 200) {
+					// Request was successful, check if the uplaod was successful
+					var xmlRoot = httpRequest.responseXML.documentElement;
+					var success = xmlRoot.getAttribute("success");
+					if(success == "true") {
+						// Get the resource ID
+						var resId = xmlRoot.getElementsByTagName('resid')[0].firstChild.nodeValue;
+						alert("Sync success! Res ID: " + resId);
+						// TODO: Need to implement resource ID in the UP2P Synced items table
+						
+					} else {
+						var errorMsg = xmlRoot.getElementsByTagName('errmsg')[0].firstChild.nodeValue;
+						throw new Error("UP2P Sync: UP2P Reported error message: " + errorMsg);
+					}
+				} else {
+					throw new Error("UP2P Sync: Attempted connection to URL: " + uploadUrl 
+							+ " returned status code: " + responseStatus);
+				}
 			}
 			
 			Zotero.DB.commitTransaction();
 		}
 		catch (e) {
 			Zotero.DB.rollbackTransaction();
+			// TODO: This should also ensure that any duplicated files
+			// or new directories are removed
 			Zotero.debug(e);
 			throw (e);
 		}

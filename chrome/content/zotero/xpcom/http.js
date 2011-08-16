@@ -132,9 +132,10 @@ Zotero.HTTP = new function() {
 		}
 		requestBody = requestBody + "--";
 		
-		Zotero.debug("\nSTART (length: " + requestBody.length + "):\n" + requestBody + "\nEND\n");
+		// Zotero.debug("\nSTART (length: " + requestBody.length + "):\n" + requestBody + "\nEND\n");
 		
-		httpRequest.open('POST', url, true);
+		httpRequest.open('POST', url, false);
+		httpRequest.channel.loadFlags |= Components.interfaces.nsIRequest.LOAD_BYPASS_CACHE;
 		httpRequest.setRequestHeader("Content-type", "multipart/form-data; boundary=\"" 
 				+ boundaryString + "\"");
 		httpRequest.setRequestHeader("Connection", "Keep-Alive");
