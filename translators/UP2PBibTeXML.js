@@ -598,26 +598,30 @@ function doExport() {
 				for each(var attachment in item.attachments) {
 					if(attachment.mimeType == "application/pdf") {
 						var filename = attachment.filename;
-						var renameCounter = 2;
-						var saveSuccess = false;
+						if (Zotero.getOption("skipFileBinaries")) {
+							// Do nothing
+						} else {
+							var renameCounter = 2;
+							var saveSuccess = false;
 
-						// Save the attachment, renaming if necessary if a file name conflict
-						// occurs
-						while(!saveSuccess) {
-							try {
-								attachment.saveItem(filename);
-								saveSuccess = true;
-							} catch (e) {
-								if(e.message.indexOf("ERROR_FILE_EXISTS") >= 0) {
-									filename = "[" + renameCounter + "]" + attachment.filename;
-									renameCounter++;
-								} else {
-									throw e;
+							// Save the attachment, renaming if necessary if a file name conflict
+							// occurs
+							while(!saveSuccess) {
+								try {
+									attachment.saveItem(filename);
+									saveSuccess = true;
+								} catch (e) {
+									if(e.message.indexOf("ERROR_FILE_EXISTS") >= 0) {
+										filename = "[" + renameCounter + "]" + attachment.filename;
+										renameCounter++;
+									} else {
+										throw e;
+									}
 								}
 							}
 						}
-
-						storeField("file", "file:" + attachment.filename, 
+						
+						storeField("file", "file:" + filename, 
 								itemFieldsMap, mapKeys);
 					}
 				}
