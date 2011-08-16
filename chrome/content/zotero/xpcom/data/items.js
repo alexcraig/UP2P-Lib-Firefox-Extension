@@ -533,6 +533,8 @@ Zotero.Items = new function() {
 			Zotero.DB.beginTransaction();
 			
 			for each(var id in ids) {
+				var attachFiles = [];
+				
 				var item = this.get(id);
 				if (!item) {
 					Zotero.debug('Item ' + id + ' does not exist in Items.up2pSync()!', 1);
@@ -569,6 +571,10 @@ Zotero.Items = new function() {
 						// Copy the actual file to the new attachment item's storage
 						// location
 						var file = attachment.getFile();
+						// KLUDGE - Should use the new attachment location for the file upload,
+						// Just use the old one for now
+						attachFiles.push(file);
+						
 						var newStorageDir = Zotero.Attachments.getStorageDirectory(newAttachId);
 						Zotero.debug("===== New file path: " + newStorageDir.path);
 						file.copyTo(newStorageDir, file.leafName);
@@ -579,58 +585,112 @@ Zotero.Items = new function() {
 				newItem.save();
 				Zotero.debug("===== Saved new item");
 				
-				try {
-					// Generate a UP2P / BibTeXML resource file for the document
-					var up2pTranslator = new Zotero.Translate.Export();
-					// TODO: Might want to put this into the preferences pane
-					up2pTranslator.setTranslator(
-							Zotero.Translators.get("2539A338-98F5-11E0-9A51-59F44824019B"));
-					Zotero.debug("===== Loaded translator: " + up2pTranslator.id
-							+ " type: " + up2pTranslator.translatorType);
-					
-					up2pTranslator.setItems([newItem]);
-					// TODO: Just use the main storage directory for now, need to figure out
-					// a better way to do this... (maybe attach the XML as a static attachment?)
-					// var exportLocation = Zotero.getStorageDirectory();
-					var exportLocation = Zotero.Attachments.getStorageDirectory(newId);
-					if(!exportLocation.exists()) {
-						exportLocation.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 0700);
-					}
-					exportLocation.append("up2p_" + newItem.key + ".xml");
-					up2pTranslator.setLocation(exportLocation);
-					
-					up2pTranslator.translate(false, false);
-					Zotero.debug("===== Generated XML in: " + exportLocation.path);
-					
-					
-					// Now, submit the file to the U-P2P node
-					var xmlString = Zotero.File.getContents(exportLocation);
-					var commId = Zotero.Prefs.get("up2p.sync.community");
-					var uploadUrl = Zotero.Prefs.get("up2p.sync.url") + "create";
-					var xmlhttp = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"]
-							.createInstance();
-					
-					var formData = Components.classes["@mozilla.org/files/formdata;1"]
-							.createInstance(Components.interfaces.nsIDOMFormData);
-					formData.append("up2p:community", commId);
-					formData.append("up2p:rawxml", xmlString);
-					formData.append("up2p:filename", newItem.key + ".xml");
-					
-					// Must use synchronous queries for multipart form data
-					xmlhttp.open('POST', uploadUrl, true);
-					// Prevent certificate/authentication dialogs from popping up
-					// xmlhttp.mozBackgroundRequest = true;
-					xmlhttp.send(formData);
-					
-				} catch (exception) {
-					Zotero.debug(exception);
+				// Generate a UP2P / BibTeXML resource file for the document
+				// TODO: Might want to put this ID into the preferences pane
+				var translator = Zotero.Translators.get("2539A338-98F5-11E0-9A51-59F44824019B");
+				var up2pTranslator = new Zotero.Translate.Export();
+				up2pTranslator.setTranslator(translator);
+				up2pTranslator.setDisplayOptions({"exportCharset":"UTF-8", "exportFileData":true, "skipFileBinaries":true});
+				up2pTranslator.setItems([newItem]);
+				// TODO: Just use the main storage directory for now, need to figure out
+				// a better way to do this... (maybe attach the XML as a static attachment?)
+				// var exportLocation = Zotero.getStorageDirectory();
+				var exportLocation = Zotero.Attachments.getStorageDirectory(newId);
+				if(!exportLocation.exists()) {
+					exportLocation.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 0700);
 				}
+				up2pTranslator.setLocation(exportLocation);
+				Zotero.debug("===== Generating XML in: " + exportLocation.path);
+				up2pTranslator.translate(false, false);
+				Zotero.debug("===== Generated XML");
+				exportLocation.append(newItem.key + ".xml");
+				
+				
+				// Now, submit the file to the U-P2P node
+				var xmlString = Zotero.File.getContents(exportLocation);
+				var commId = Zotero.Prefs.get("up2p.sync.community");
+				var uploadUrl = Zotero.Prefs.get("up2p.sync.url") + "create";
+				var httpRequest = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"]
+						.createInstance();
+				
+				// Prepare the MIME POST data
+				var newline = '\r\n';
+				var boundaryString = '5572c28b-dbf9-4fc2-8e30-557e12c70d00';
+				var boundary = '--' + boundaryString;
+				var requestBody = boundary + newline
+					+ 'Content-Disposition: form-data; name="up2p:community"' + newline
+					+ newline
+					+ commId + newline
+					+ boundary + newline
+					+ 'Content-Disposition: form-data; name="up2p:rawxml"' + newline
+					+ newline
+					+ xmlString + newline
+					+ boundary + newline
+					+ 'Content-Disposition: form-data; name="up2p:filename"' + newline
+					+ newline
+					+ newItem.key + ".xml" + newline
+					+ boundary;
+				
+				
+				for each(var file in attachFiles) {
+					var stream = Components.classes["@mozilla.org/network/file-input-stream;1"]
+							.createInstance(Components.interfaces.nsIFileInputStream);
+					stream.init(file, 0x01, 00004, 1<<2);	// Close on file end
+					var bstream =  Components.classes["@mozilla.org/network/buffered-input-stream;1"]
+							.getService();
+					bstream.QueryInterface(Components.interfaces.nsIBufferedInputStream);
+					bstream.init(stream, 1000);
+					bstream.QueryInterface(Components.interfaces.nsIInputStream);
+					binary = Components.classes["@mozilla.org/binaryinputstream;1"]
+							.createInstance(Components.interfaces.nsIBinaryInputStream);
+					binary.setInputStream (stream);
+					Zotero.debug("===== File size: " + file.fileSize);
+					
+					// Todo: Filenames may need special processing
+					requestBody = requestBody + newline + 'Content-Disposition: form-data; name="up2p:filename"; filename="'
+						+ file.leafName + '"' + newline
+						+ 'Content-Type: application/octet-stream' + newline
+						+ 'Content-Transfer-Encoding: binary' + newline
+						+ newline
+						+ binary.readBytes(file.fileSize) + newline
+						+ boundary;
+				}
+				requestBody = requestBody + "--";
+				
+				Zotero.debug("\nSTART:\n" + requestBody + "\nEND\n");
+				
+				httpRequest.open('POST', uploadUrl, true);
+				httpRequest.setRequestHeader("Content-type", "multipart/form-data; \
+						boundary=\"" + boundaryString + "\"");
+				httpRequest.setRequestHeader("Connection", "Keep-Alive");
+				httpRequest.setRequestHeader("Accept", "[star]/[star]");
+				httpRequest.setRequestHeader("Content-length", requestBody.length);
+				httpRequest.sendAsBinary(requestBody);
+				
+				/*
+				// Old, easy method (no way to include files using this method
+				var formData = Components.classes["@mozilla.org/files/formdata;1"]
+						.createInstance(Components.interfaces.nsIDOMFormData);
+				formData.append("up2p:community", commId);
+				formData.append("up2p:rawxml", xmlString);
+				formData.append("up2p:filename", newItem.key + ".xml");
+				for each(var file in attachFiles) {
+					Zotero.debug("===== Attaching FILE: " + file.leafName);
+					var uploadFile = File(file.path);
+					formData.append("up2p:filename", uploadFile);
+				}
+				
+				// Must use synchronous queries for multipart form data
+				xmlhttp.open('POST', uploadUrl, true);
+				xmlhttp.send(formData);
+				*/
 			}
 			
 			Zotero.DB.commitTransaction();
 		}
 		catch (e) {
 			Zotero.DB.rollbackTransaction();
+			Zotero.debug(e);
 			throw (e);
 		}
 		finally {
