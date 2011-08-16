@@ -97,13 +97,14 @@ Zotero.HTTP = new function() {
 		var newline = '\r\n';
 		var boundaryString = '5572c28b-dbf9-4fc2-8e30-557e12c70d00';
 		var boundary = '--' + boundaryString;
-		var requestBody = "";
+		var requestBody = boundary;
 		
 		for each(var textParam in textParams) {
-			requestBody = requestBody + boundary + newline
+			requestBody = requestBody + newline
 					+ 'Content-Disposition: form-data; name="' + textParam.name + '"' + newline
 					+ newline
-					+ textParam.value + newline;
+					+ textParam.value + newline
+					+ boundary;
 		}
 		
 		for each(var fileParam in fileParams) {
@@ -117,23 +118,24 @@ Zotero.HTTP = new function() {
 			bstream.QueryInterface(Components.interfaces.nsIInputStream);
 			binary = Components.classes["@mozilla.org/binaryinputstream;1"]
 					.createInstance(Components.interfaces.nsIBinaryInputStream);
-			binary.setInputStream (bstream);
+			binary.setInputStream(stream);
 			
 			// Todo: Filenames may need special processing
-			requestBody = requestBody + boundary + newline
+			requestBody = requestBody + newline
 				+ 'Content-Disposition: form-data; name="' + fileParam.name + '"; filename="'
 				+ fileParam.filename + '"' + newline
 				+ 'Content-Type: application/octet-stream' + newline
 				+ 'Content-Transfer-Encoding: binary' + newline
 				+ newline
-				+ binary.readBytes(binary.available()) + newline;
+				+ binary.readBytes(fileParam.file.fileSize) + newline
+				+ boundary;
 		}
-		requestBody = requestBody + boundary + "--";
+		requestBody = requestBody + "--";
 		
-		Zotero.debug("\nSTART:\n" + requestBody + "\nEND\n");
+		Zotero.debug("\nSTART (length: " + requestBody.length + "):\n" + requestBody + "\nEND\n");
 		
 		httpRequest.open('POST', url, true);
-		httpRequest.setRequestHeader("Content-type", "multipart/form-data; \"boundary=\"" 
+		httpRequest.setRequestHeader("Content-type", "multipart/form-data; boundary=\"" 
 				+ boundaryString + "\"");
 		httpRequest.setRequestHeader("Connection", "Keep-Alive");
 		httpRequest.setRequestHeader("Accept", "[star]/[star]");

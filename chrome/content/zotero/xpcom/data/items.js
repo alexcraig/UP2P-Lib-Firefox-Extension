@@ -573,7 +573,13 @@ Zotero.Items = new function() {
 						var file = attachment.getFile();
 						// KLUDGE - Should use the new attachment location for the file upload,
 						// Just use the old one for now
-						attachFiles.push(file);
+						attachFiles.push(
+							{
+							 name: "up2p:filename",
+							 filename: file.leafName,
+							 file: file
+							}
+						);
 						
 						var newStorageDir = Zotero.Attachments.getStorageDirectory(newAttachId);
 						Zotero.debug("===== New file path: " + newStorageDir.path);
@@ -610,63 +616,18 @@ Zotero.Items = new function() {
 				var xmlString = Zotero.File.getContents(exportLocation);
 				var commId = Zotero.Prefs.get("up2p.sync.community");
 				var uploadUrl = Zotero.Prefs.get("up2p.sync.url") + "create";
-				var httpRequest = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"]
-						.createInstance();
+						
+				var textParams = [];
+				textParams.push(
+					{name: "up2p:community",
+					 value: commId},
+					{name: "up2p:rawxml",
+					 value: xmlString},
+					{name: "up2p:filename",
+					 value: newItem.key + ".xml"}
+				);
 				
-				// Prepare the MIME POST data
-				var newline = '\r\n';
-				var boundaryString = '5572c28b-dbf9-4fc2-8e30-557e12c70d00';
-				var boundary = '--' + boundaryString;
-				var requestBody = boundary + newline
-					+ 'Content-Disposition: form-data; name="up2p:community"' + newline
-					+ newline
-					+ commId + newline
-					+ boundary + newline
-					+ 'Content-Disposition: form-data; name="up2p:rawxml"' + newline
-					+ newline
-					+ xmlString + newline
-					+ boundary + newline
-					+ 'Content-Disposition: form-data; name="up2p:filename"' + newline
-					+ newline
-					+ newItem.key + ".xml" + newline
-					+ boundary;
-				
-				
-				for each(var file in attachFiles) {
-					var stream = Components.classes["@mozilla.org/network/file-input-stream;1"]
-							.createInstance(Components.interfaces.nsIFileInputStream);
-					stream.init(file, 0x01, 00004, 1<<2);	// Close on file end
-					var bstream =  Components.classes["@mozilla.org/network/buffered-input-stream;1"]
-							.getService();
-					bstream.QueryInterface(Components.interfaces.nsIBufferedInputStream);
-					bstream.init(stream, 1000);
-					bstream.QueryInterface(Components.interfaces.nsIInputStream);
-					binary = Components.classes["@mozilla.org/binaryinputstream;1"]
-							.createInstance(Components.interfaces.nsIBinaryInputStream);
-					binary.setInputStream (stream);
-					Zotero.debug("===== File size: " + file.fileSize);
-					
-					// Todo: Filenames may need special processing
-					requestBody = requestBody + newline + 'Content-Disposition: form-data; name="up2p:filename"; filename="'
-						+ file.leafName + '"' + newline
-						+ 'Content-Type: application/octet-stream' + newline
-						+ 'Content-Transfer-Encoding: binary' + newline
-						+ newline
-						+ binary.readBytes(file.fileSize) + newline
-						+ boundary;
-				}
-				requestBody = requestBody + "--";
-				
-				Zotero.debug("\nSTART:\n" + requestBody + "\nEND\n");
-				
-				httpRequest.open('POST', uploadUrl, true);
-				httpRequest.setRequestHeader("Content-type", "multipart/form-data; \
-						boundary=\"" + boundaryString + "\"");
-				httpRequest.setRequestHeader("Connection", "Keep-Alive");
-				httpRequest.setRequestHeader("Accept", "[star]/[star]");
-				httpRequest.setRequestHeader("Content-length", requestBody.length);
-				httpRequest.sendAsBinary(requestBody);
-
+				var httpRequest = Zotero.HTTP.doMultipartPost(uploadUrl, textParams, attachFiles);
 			}
 			
 			Zotero.DB.commitTransaction();
