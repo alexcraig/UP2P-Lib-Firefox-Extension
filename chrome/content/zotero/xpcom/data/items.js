@@ -521,13 +521,14 @@ Zotero.Items = new function() {
 	 */
 	function up2pSync(ids) {
 		ids = Zotero.flattenArguments(ids);
+		var successTitles = [];
 		
-		var usiDisabled = Zotero.UnresponsiveScriptIndicator.disable();
-		
-		try {
-			Zotero.DB.beginTransaction();
-			
-			for each(var id in ids) {
+		for each(var id in ids) {
+			try {
+				var newFiles = [];
+				var usiDisabled = Zotero.UnresponsiveScriptIndicator.disable();
+				Zotero.DB.beginTransaction();
+				
 				var attachFiles = [];
 				var item = this.get(id);
 				
@@ -577,6 +578,8 @@ Zotero.Items = new function() {
 						);
 						
 						var newStorageDir = Zotero.Attachments.getStorageDirectory(newAttachId);
+						Zotero.debug("==== NewFiles push1: " + newStorageDir.path);
+						newFiles.push(newStorageDir.clone());
 						file.copyTo(newStorageDir, file.leafName);
 					}
 				}
@@ -589,10 +592,9 @@ Zotero.Items = new function() {
 				up2pTranslator.setTranslator(translator);
 				up2pTranslator.setDisplayOptions({"exportCharset":"UTF-8", "exportFileData":true, "skipFileBinaries":true});
 				up2pTranslator.setItems([newItem]);
-				// TODO: Just use the main storage directory for now, need to figure out
-				// a better way to do this... (maybe attach the XML as a static attachment?)
-				// var exportLocation = Zotero.getStorageDirectory();
 				var exportLocation = Zotero.Attachments.getStorageDirectory(newId);
+				Zotero.debug("==== NewFiles push2: " + exportLocation.path);
+				newFiles.push(exportLocation.clone());
 				if(!exportLocation.exists()) {
 					exportLocation.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 0700);
 				}
@@ -624,7 +626,8 @@ Zotero.Items = new function() {
 				try {
 					responseStatus = httpRequest.status;
 				} catch (e) {
-					throw new Error("UP2P Sync: Attempted connection to URL: " + uploadUrl 
+					throw new Error("Error synchronizing " + item.getDisplayTitle(false) + ":\n"
+							+ "Attempted connection to URL: " + uploadUrl 
 							+ " failed to return a status code. Please check to ensure that the"
 							+ " URL provided in the preferences page is valid.");
 				}
@@ -637,34 +640,46 @@ Zotero.Items = new function() {
 					if(success == "true") {
 						// Get the resource ID
 						var resId = xmlRoot.getElementsByTagName('resid')[0].firstChild.nodeValue;
-						alert("Sync success! Res ID: " + resId);
 						// TODO: Need to implement resource ID in the UP2P Synced items table
 						newItem.up2pSync = true;
 						newItem.up2pResId = resId;
 						newItem.save();
+						successTitles.push(item.getDisplayTitle(false));
 					} else {
 						var errorMsg = xmlRoot.getElementsByTagName('errmsg')[0].firstChild.nodeValue;
-						throw new Error("UP2P Sync: UP2P Reported error message: " + errorMsg);
+						throw new Error("Error synchronizing " + item.getDisplayTitle(false) + ":\n" 
+								+ errorMsg);
 					}
 				} else {
-					throw new Error("UP2P Sync: Attempted connection to URL: " + uploadUrl 
+					throw new Error("Error synchronizing " + item.getDisplayTitle(false) + ":\n"
+							+ "Attempted connection to URL: " + uploadUrl 
 							+ " returned status code: " + responseStatus);
 				}
+				
+				Zotero.DB.commitTransaction();
 			}
-			
-			Zotero.DB.commitTransaction();
-		}
-		catch (e) {
-			Zotero.DB.rollbackTransaction();
-			// TODO: This should also ensure that any duplicated files
-			// or new directories are removed
-			Zotero.debug(e);
-			throw (e);
-		}
-		finally {
-			if (usiDisabled) {
-				Zotero.UnresponsiveScriptIndicator.enable();
+			catch (e) {
+				Zotero.DB.rollbackTransaction();
+				
+				for each(var file in newFiles) {
+					Zotero.debug("===== Cleaning up file: " + file.path);
+					file.remove(true);
+				}
+				alert(e);
 			}
+			finally {
+				if (usiDisabled) {
+					Zotero.UnresponsiveScriptIndicator.enable();
+				}
+			}
+		}
+		
+		if(successTitles.length > 0) {
+			var successString = "Successfully synchronized resource(s):";
+			for each(var title in successTitles) {
+				successString = successString + "\n" + title;
+			}
+			alert(successString);
 		}
 	}
 	
