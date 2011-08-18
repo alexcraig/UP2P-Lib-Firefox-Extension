@@ -633,7 +633,7 @@ Zotero.Items = new function() {
 				}
 				
 				if (responseStatus == 200) {
-					// Request was successful, check if the uplaod was successful
+					// Request was successful, check if the upload was successful
 					Zotero.debug(httpRequest.responseText);
 					var xmlRoot = httpRequest.responseXML.documentElement;
 					var success = xmlRoot.getAttribute("success");
