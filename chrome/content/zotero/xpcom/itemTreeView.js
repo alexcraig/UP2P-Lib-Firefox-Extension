@@ -1547,8 +1547,6 @@ Zotero.ItemTreeView.prototype.deleteSelection = function (force)
  */
 Zotero.ItemTreeView.prototype.up2pSyncSelection = function ()
 {
-	Zotero.debug("============ ITEM_TREE_VIEW.UP2P SYNC");
-	
 	if (this.selection.count == 0) {
 		return;
 	}

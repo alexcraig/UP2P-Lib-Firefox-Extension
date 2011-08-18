@@ -215,7 +215,8 @@ CREATE TABLE deletedItems (
 CREATE INDEX deletedItems_dateDeleted ON deletedItems(dateDeleted);
 
 CREATE TABLE up2pSyncedItems (
-    itemID INTEGER PRIMARY KEY
+    itemID INTEGER PRIMARY KEY,
+	resourceId TEXT NOT NULL
 );
 
 CREATE TABLE relations (

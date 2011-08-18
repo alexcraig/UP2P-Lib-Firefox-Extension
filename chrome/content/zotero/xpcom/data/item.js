@@ -78,6 +78,7 @@ Zotero.Item.prototype._init = function () {
 	
 	this._deleted = null;
 	this._up2pSync = null;
+	this._up2pResId = null;
 	this._noteTitle = null;
 	this._noteText = null;
 	this._noteAccessTime = null;
@@ -1115,7 +1116,6 @@ Zotero.Item.prototype.__defineGetter__('up2pSync', function () {
 	
 	var sql = "SELECT COUNT(*) FROM up2pSyncedItems WHERE itemID=?";
 	var dbResult = Zotero.DB.valueQuery(sql, this.id);
-	Zotero.debug("======= UP2P SYNC GETTER DB: " + dbResult);
 	var up2pSync = !!dbResult;
 	this._up2pSync = up2pSync;
 	return up2pSync;
@@ -1134,6 +1134,36 @@ Zotero.Item.prototype.__defineSetter__('up2pSync', function (val) {
 		this._changedUp2pSync = true;
 	}
 	this._up2pSync = up2pSync;
+});
+
+Zotero.Item.prototype.__defineGetter__('up2pResId', function () {
+	if (this._up2pResId !== null) {
+		return this._up2pResId;
+	}
+	
+	if (!this.id) {
+		return false;
+	}
+	
+	var sql = "SELECT resourceId FROM up2pSyncedItems WHERE itemID=?";
+	var dbResult = Zotero.DB.valueQuery(sql, this.id);
+	this._up2pResId = dbResult;
+	return this._up2pResId;
+});
+
+
+Zotero.Item.prototype.__defineSetter__('up2pResId', function (val) {
+	var resId = val;
+	
+	if (this._up2pResId == resId) {
+		Zotero.debug("UP2P resource ID hasn't changed for item " + this.id);
+		return;
+	}
+	
+	if (!this._changedUp2pSync) {
+		this._changedUp2pSync = true;
+	}
+	this._up2pResId = resId;
 });
 
 Zotero.Item.prototype.addRelatedItem = function (itemID) {
@@ -1447,12 +1477,19 @@ Zotero.Item.prototype.save = function() {
 			// UP2P Sync State
 			if (this._changedUp2pSync) {
 				if (this.up2pSync) {
-					sql = "REPLACE INTO up2pSyncedItems (itemID) VALUES (?)";
+					if(this._up2pResId === null) {
+						throw new Error("saveItem(): Attempted to save a UP2P sync'd item with no resource ID");
+					}
+					sql = "REPLACE INTO up2pSyncedItems (itemID, resourceId) VALUES (?, ?)";
+					Zotero.DB.query(sql, [
+						{int: this.id},
+						{string: this._up2pResId}
+					]);
 				}
 				else {
 					sql = "DELETE FROM up2pSyncedItems WHERE itemID=?";
+					Zotero.DB.query(sql, this.id);
 				}
-				Zotero.DB.query(sql, itemID);
 			}
 			
 			
@@ -1831,14 +1868,20 @@ Zotero.Item.prototype.save = function() {
 			// UP2P Sync State
 			if (this._changedUp2pSync) {
 				if (this.up2pSync) {
-					sql = "REPLACE INTO up2pSyncedItems (itemID) VALUES (?)";
+					if(this._up2pResId === null) {
+						throw new Error("saveItem(): Attempted to save a UP2P sync'd item with no resource ID");
+					}
+					sql = "REPLACE INTO up2pSyncedItems (itemID, resourceId) VALUES (?, ?)";
+					Zotero.DB.query(sql, [
+						{int: this.id},
+						{string: this._up2pResId}
+					]);
 				}
 				else {
 					sql = "DELETE FROM up2pSyncedItems WHERE itemID=?";
+					Zotero.DB.query(sql, this.id);
 				}
-				Zotero.DB.query(sql, this.id);
 			}
-			
 			
 			// Note
 			if (this._changedNote) {
@@ -4241,6 +4284,37 @@ Zotero.Item.prototype.erase = function() {
 	}
 	if (hasTags) {
 		Zotero.Prefs.set('purge.tags', true);
+	}
+	
+	// Delete on Zotero side was successful, now remove the
+	// item from UP2P if it has been sync'd
+	if(this.up2pSync == true) {
+		var commId = Zotero.Prefs.get("up2p.sync.community");
+		var deleteUrl = Zotero.Prefs.get("up2p.sync.url") + "view.jsp";
+		deleteUrl = deleteUrl + "?up2p:community=" + commId;
+		deleteUrl = deleteUrl + "&up2p:delete=" + this.up2pResId;
+				
+
+		Zotero.debug("Sending UP2P sync deletion request to: " + deleteUrl);
+		var httpRequest = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"]
+				.createInstance();
+		httpRequest.open('POST', deleteUrl, false);
+		httpRequest.send(null);
+		
+		var responseStatus;
+		try {
+			responseStatus = httpRequest.status;
+		} catch (e) {
+			throw new Error("Attempted connection to URL: " + uploadUrl 
+					+ " failed to return a status code. Please check to ensure that the"
+					+ " URL provided in the preferences page is valid.");
+		}
+		
+		if (responseStatus == 200) {
+			// Request was successful
+		} else {
+			Zotero.debug("Warning, failed to remove UP2P synchronized item from UP2P-Lib.");
+		}
 	}
 }
 

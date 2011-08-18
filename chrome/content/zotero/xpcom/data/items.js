@@ -520,7 +520,6 @@ Zotero.Items = new function() {
 	 * @param	{Integer|Integer[]}	ids					Item ids
 	 */
 	function up2pSync(ids) {
-		Zotero.debug("============ ITEMS.UP2P SYNC");
 		ids = Zotero.flattenArguments(ids);
 		
 		var usiDisabled = Zotero.UnresponsiveScriptIndicator.disable();
@@ -540,7 +539,6 @@ Zotero.Items = new function() {
 				
 				// ===== Make a duplicate copy of the item, including all attachments =====
 				var newItem = new Zotero.Item(item.itemTypeID);
-				newItem.up2pSync = true;
 				// newItem.libraryID = item.libraryID;
 				// DEBUG: save here because clone() doesn't currently work on unsaved tagged items
 				var newId = newItem.save();
@@ -557,7 +555,11 @@ Zotero.Items = new function() {
 						var newAttachment = new Zotero.Item(attachment.itemTypeID);
 						attachment.clone(false, newAttachment, true);
 						newAttachment.setSource(newId);
-						newAttachment.up2pSync = true;
+						
+						// TODO: Reconsider this... do we really need
+						// to duplicate the attachments at all?
+						
+						// newAttachment.up2pSync = true;
 						var newAttachId = newAttachment.save();
 						newAttachment = Zotero.Items.get(newAttachId);
 						
@@ -578,10 +580,7 @@ Zotero.Items = new function() {
 						file.copyTo(newStorageDir, file.leafName);
 					}
 				}
-				
 				newItem.save();
-				Zotero.debug("===== Saved new item");
-				
 				
 				// ===== Generate a BibTeXML file for the duplicated entry, and store it  =====
 				// TODO: Might want to put this ID into the preferences pane
@@ -598,9 +597,7 @@ Zotero.Items = new function() {
 					exportLocation.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 0700);
 				}
 				up2pTranslator.setLocation(exportLocation);
-				Zotero.debug("===== Generating XML in: " + exportLocation.path);
 				up2pTranslator.translate(false, false);
-				Zotero.debug("===== Generated XML");
 				exportLocation.append(newItem.key + ".xml");
 				
 				
@@ -634,6 +631,7 @@ Zotero.Items = new function() {
 				
 				if (responseStatus == 200) {
 					// Request was successful, check if the uplaod was successful
+					Zotero.debug(httpRequest.responseText);
 					var xmlRoot = httpRequest.responseXML.documentElement;
 					var success = xmlRoot.getAttribute("success");
 					if(success == "true") {
@@ -641,7 +639,9 @@ Zotero.Items = new function() {
 						var resId = xmlRoot.getElementsByTagName('resid')[0].firstChild.nodeValue;
 						alert("Sync success! Res ID: " + resId);
 						// TODO: Need to implement resource ID in the UP2P Synced items table
-						
+						newItem.up2pSync = true;
+						newItem.up2pResId = resId;
+						newItem.save();
 					} else {
 						var errorMsg = xmlRoot.getElementsByTagName('errmsg')[0].firstChild.nodeValue;
 						throw new Error("UP2P Sync: UP2P Reported error message: " + errorMsg);

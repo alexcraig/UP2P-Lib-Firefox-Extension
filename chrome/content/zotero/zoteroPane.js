@@ -1396,8 +1396,6 @@ var ZoteroPane = new function()
 	
 	
 	this.up2pSyncSelectedItems = function() {
-		Zotero.debug("============ ZOTEROPANE.UP2P SYNC");
-		
 		if (!this.itemsView || !this.itemsView.selection.count) {
 			return;
 		}
