@@ -540,7 +540,6 @@ Zotero.Items = new function() {
 				
 				// ===== Make a duplicate copy of the item, including all attachments =====
 				var newItem = new Zotero.Item(item.itemTypeID);
-				// newItem.libraryID = item.libraryID;
 				// DEBUG: save here because clone() doesn't currently work on unsaved tagged items
 				var newId = newItem.save();
 				var newItem = Zotero.Items.get(newId);
@@ -557,8 +556,11 @@ Zotero.Items = new function() {
 						attachment.clone(false, newAttachment, true);
 						newAttachment.setSource(newId);
 						
-						// TODO: Reconsider this... do we really need
-						// to duplicate the attachments at all?
+						// TODO: Reconsider this... do we really need to duplicate the 
+						// attachments at all? The attachments will not have a resource ID,
+						// and the contents will not need to be accessed once uploaded.
+						// I'll leave it for now, it might be handy for doing reverse
+						// synchronization.
 						
 						// newAttachment.up2pSync = true;
 						var newAttachId = newAttachment.save();
@@ -578,7 +580,6 @@ Zotero.Items = new function() {
 						);
 						
 						var newStorageDir = Zotero.Attachments.getStorageDirectory(newAttachId);
-						Zotero.debug("==== NewFiles push1: " + newStorageDir.path);
 						newFiles.push(newStorageDir.clone());
 						file.copyTo(newStorageDir, file.leafName);
 					}
@@ -593,7 +594,6 @@ Zotero.Items = new function() {
 				up2pTranslator.setDisplayOptions({"exportCharset":"UTF-8", "exportFileData":true, "skipFileBinaries":true});
 				up2pTranslator.setItems([newItem]);
 				var exportLocation = Zotero.Attachments.getStorageDirectory(newId);
-				Zotero.debug("==== NewFiles push2: " + exportLocation.path);
 				newFiles.push(exportLocation.clone());
 				if(!exportLocation.exists()) {
 					exportLocation.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 0700);
@@ -620,10 +620,10 @@ Zotero.Items = new function() {
 					 value: "true"}
 				);
 				
-				var httpRequest = Zotero.HTTP.doMultipartPost(uploadUrl, textParams, attachFiles);
 				var responseStatus;
 				
 				try {
+					var httpRequest = Zotero.HTTP.doMultipartPost(uploadUrl, textParams, attachFiles);
 					responseStatus = httpRequest.status;
 				} catch (e) {
 					throw new Error("Error synchronizing " + item.getDisplayTitle(false) + ":\n"

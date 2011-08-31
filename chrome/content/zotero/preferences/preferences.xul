@@ -333,7 +333,7 @@ To add a new preference:
 						
 						<vbox>
 							<checkbox label="Enable UP2P-Lib Synchronization" style="margin-top:.6em;" preference="pref-up2p-sync"/>
-
+							<button id="up2pSyncButton" style="margin-top:0" label="Synchronize Now" oncommand="refreshUp2pSync();" />
 							<label value="UP2P Node Address: " style="margin-top:.6em;"/>
 							<textbox preference="pref-up2p-node-url" />
 							

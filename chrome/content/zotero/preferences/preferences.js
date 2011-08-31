@@ -1832,3 +1832,36 @@ function openInViewer(uri) {
 		}
 	}
 }
+
+/**
+ * Fetches a list of resources from the specified U-P2P node, and alerts to list to the user.
+ * In the future, this should load the resources from U-P2P into the Zotero local library (if
+ * the resource ID does not already exist on an existing Zotero item.
+ */
+function refreshUp2pSync() {
+	// TODO: This should probably be moved somewhere more appropriate, and rewritten to use
+	// Zotero.HTTP.doGet instead of doMultipartPost
+	var commId = Zotero.Prefs.get("up2p.sync.community");
+	var contextUrl = Zotero.Prefs.get("up2p.sync.url") + "context/contents.xml"
+		+ "?up2p:community=" + commId;
+	var responseStatus;
+	var httpRequest;
+	
+	
+	Zotero.HTTP.doGet(contextUrl, function (xmlhttp) {
+		if (xmlhttp.status != 200 || (xmlhttp.status == 200 && !xmlhttp.responseXML)) {
+			alert("Error connecting to UP2P node to perform synchronization.");
+			return;
+		}
+		
+		// Got a valid response, now parse the response XML to get the list of available resources
+		var resources = xmlhttp.responseXML.getElementsByTagName("resource");
+		var resourceString = "Resources on this U-P2P node (note: no actual synchronization occurs at this point):\n";
+		var resourceIds = [];
+		for(var i = 0; i < resources.length; i++) {
+			resourceIds.push(resources[i].getAttribute("id"));
+			resourceString += "\n" + resources[i].getAttribute("id");
+		}
+		alert(resourceString);
+	});
+}
